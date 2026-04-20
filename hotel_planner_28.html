@@ -170,10 +170,10 @@ body {
 .ocu-fill { height: 100%; border-radius: 2px; }
 
 /* ── CALENDARIO ── */
-.cal-outer { overflow: auto; }
-.cal-grid  { display: grid; background: var(--surface); border-radius: var(--radius); border: 1px solid var(--border); overflow: hidden; }
+.cal-outer { overflow: auto; position: relative; }
+.cal-grid  { display: grid; background: var(--surface); border-radius: var(--radius); border: 1px solid var(--border); overflow: visible; min-width: max-content; }
 .cal-head  { display: contents; }
-.ch-spacer { background: var(--surface2); padding: 8px 10px; position: sticky; left: 0; z-index: 3; border-right: 1px solid var(--border); border-bottom: 1px solid var(--border); }
+.ch-spacer { background: var(--surface2); padding: 8px 10px; position: sticky; left: 0; z-index: 4; border-right: 1px solid var(--border); border-bottom: 1px solid var(--border); min-width: 140px; width: 140px; }
 .ch-day    { padding: 6px 2px; font-size: 11px; font-weight: 700; color: var(--text2); text-align: center; background: var(--surface2); border-right: 1px solid var(--border); border-bottom: 1px solid var(--border); min-width: 32px; }
 .ch-day.we { color: var(--red-t); background: #FDF5F5; }
 .ch-day.fest { background: var(--red-bg); }
@@ -183,7 +183,7 @@ body {
   background: var(--surface2); border-right: 1px solid var(--border);
   border-bottom: 1px solid var(--border);
   display: flex; align-items: center; gap: 6px;
-  position: sticky; left: 0; z-index: 1; min-width: 136px;
+  position: sticky; left: 0; z-index: 2; min-width: 140px; width: 140px;
 }
 .wav { width: 22px; height: 22px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 8.5px; font-weight: 700; flex-shrink: 0; }
 .cal-dcell {
@@ -257,6 +257,7 @@ body {
   color: var(--text3);
   letter-spacing: .8px;
   text-transform: uppercase;
+  position: sticky; left: 0;
 }
 /* Fila PMS cabecera — altura fija para los 4 datos */
 .cal-pms-label { line-height: 1.55; }
@@ -886,48 +887,51 @@ function renderCarga(){
 // ── RENDER CALENDARIO ─────────────────────────────────────────────────────────
 function renderCal(){
   const SHIFT_CLS={M:'bM',T:'bT',N:'bN',D:'bD',F:'bF',V:'bV',R:'bR','F!':'bFx',HN:'bHN',MR:'bR',TR:'bR','':''};
-  const SHIFT_LBL={M:'M',T:'T',N:'N',D:'D',F:'F',V:'V',R:'R','F!':'F!',HN:'HN','MR':'M(R)','TR':'T(R)','':'·'};
+  const SHIFT_LBL={M:'M',T:'T',N:'N',D:'D',F:'F',V:'V',R:'R','F!':'F!',HN:'HN',MR:'M(R)',TR:'T(R)','':'·'};
 
   const leg=document.getElementById('cal-leg');
-  const defs=[['bM','M Mañana'],['bT','T Tarde'],['bN','N Noche'],['bD','D Desayuno'],['bF','F Descanso'],['bFx','F! Festivo'],['bR','R Recupero'],['bV','V Vacaciones']];
-  leg.innerHTML=defs.map(([c,l])=>`<div class="li"><span class="badge ${c}" style="font-size:10px">${l.split(' ')[0]}</span><span>${l.split(' ')[1]}</span></div>`).join('');
+  const defs=[['bM','Mañana'],['bT','Tarde'],['bN','Noche'],['bD','Desayuno'],['bF','Descanso'],['bFx','Festivo'],['bR','Recupero'],['bV','Vacaciones']];
+  leg.innerHTML=defs.map(([c,l])=>`<div class="li"><span class="badge ${c}" style="font-size:10px">${l[0]}</span><span>${l}</span></div>`).join('');
 
-  // Columnas más anchas para que quepan los datos PMS
-  const DAY_W = 52;
-  const COLS = `140px `+Array(31).fill(`${DAY_W}px`).join(' ');
+  const dIM=getDaysInMonth();
 
-  let html=`<div class="cal-grid" style="display:grid;grid-template-columns:${COLS}">`;
+  // ── Tabla HTML (sticky fiable en todos los navegadores) ──
+  let html=`<div style="overflow-x:auto;overflow-y:visible">
+  <table style="border-collapse:collapse;table-layout:fixed;width:max-content">
+  <colgroup>
+    <col style="width:142px;min-width:142px">
+    ${Array(dIM).fill('<col style="width:52px;min-width:52px">').join('')}
+  </colgroup>
+  <thead>`;
 
-  // ── Fila 1: día de la semana + número ──
-  html+=`<div class="ch-spacer" style="font-size:10px;font-weight:600;color:var(--text3);border-bottom:none">TRABAJADOR</div>`;
-  const _dIM2=getDaysInMonth();
-  for(let d=1;d<=_dIM2;d++){
+  // Fila 1: días
+  html+=`<tr style="background:var(--surface2)">
+    <th style="padding:6px 10px;text-align:left;border-right:1px solid var(--border);border-bottom:1px solid var(--border);position:sticky;left:0;z-index:3;background:var(--surface2);font-size:11px;font-weight:600;color:var(--text3)">TRABAJADOR</th>`;
+  for(let d=1;d<=dIM;d++){
     const dt=new Date(S.year,S.month-1,d);
     const dow=dt.getDay();
     const isWE=dow===0||dow===6;
     const key=makeDateKey(d);
     const isFest=FESTIVOS.includes(key);
-    html+=`<div class="ch-day${isWE?' we':''}${isFest?' fest':''}" style="border-bottom:none;padding-bottom:2px">
-      <div style="font-size:9px">${DNAMES[dow===0?6:dow-1]}</div>
-      <div style="font-size:12px;font-weight:700">${d}</div>
-    </div>`;
+    const color=isFest?'var(--red-bg)':isWE?'#FDF5F5':'var(--surface2)';
+    const tcol=isWE||isFest?'var(--red-t)':'var(--text2)';
+    html+=`<th style="padding:5px 2px;text-align:center;border-right:1px solid var(--border);border-bottom:1px solid var(--border);background:${color};color:${tcol};font-size:11px;font-weight:700">
+      <div style="font-size:9px;font-weight:500">${['LU','MA','MI','JU','VI','SA','DO'][dow===0?6:dow-1]}</div>
+      <div>${d}</div>
+    </th>`;
   }
+  html+='</tr>';
 
-  // ── Fila 2: datos PMS + limpiezas solicitadas (clicable) ──
-  html+=`<div style="
-    background:var(--surface2);border-right:1px solid var(--border);
-    border-bottom:2px solid var(--border2);
-    padding:4px 8px;font-size:9px;font-weight:700;color:var(--text3);
-    display:flex;flex-direction:column;justify-content:flex-end;
-    letter-spacing:.4px;text-transform:uppercase;position:sticky;left:0;z-index:3">
-    <div style="color:var(--red-t);margin-bottom:1px">↑ Ocu%</div>
-    <div style="color:#8B1F1F;margin-bottom:1px">↓ Sal.</div>
-    <div style="color:var(--blue-t);margin-bottom:1px">↑ Lle.</div>
-    <div style="color:var(--amber-t);margin-bottom:1px;cursor:pointer" title="Clic en la celda del día para cambiar quién hace el desayuno">☕ Des.</div>
-    <div style="color:#7A2050">+ Sol.</div>
-  </div>`;
-
-  for(let d=1;d<=_dIM2;d++){
+  // Fila 2: datos PMS
+  html+=`<tr>
+    <td style="padding:4px 8px;background:var(--surface2);border-right:1px solid var(--border);border-bottom:2px solid var(--border2);position:sticky;left:0;z-index:2;font-size:9px;font-weight:700;color:var(--text3)">
+      <div style="color:var(--red-t)">↑ Ocu%</div>
+      <div style="color:#8B1F1F">↓ Sal.</div>
+      <div style="color:var(--blue-t)">↑ Lle.</div>
+      <div style="color:var(--amber-t);cursor:pointer">☕ Des.</div>
+      <div style="color:#7A2050">+ Sol.</div>
+    </td>`;
+  for(let d=1;d<=dIM;d++){
     const key=makeDateKey(d);
     const dt=new Date(S.year,S.month-1,d);
     const dow=dt.getDay();
@@ -936,27 +940,19 @@ function renderCal(){
     const p=PMS.find(x=>x.d===key);
     const lsol=S.limpSol[key]||0;
     const ocuColor=p?(p.pct>=90?'#C03030':p.pct>=75?'#9A6010':'#2A7A1A'):'var(--text3)';
-    const solBg=lsol>0?'rgba(122,32,80,0.10)':'transparent';
-    const baseBg=isFest?'rgba(226,75,74,0.07)':isWE?'rgba(163,45,45,0.04)':'var(--surface2)';
-
-    html+=`<div onclick="openLimpiezasDay('${key}')" title="Clic para editar limpiezas solicitadas" style="
-      background:${baseBg};
-      border-right:1px solid var(--border);
-      border-bottom:2px solid var(--border2);
-      padding:3px 2px;text-align:center;
-      font-family:'DM Mono',monospace;cursor:pointer;
-      transition:opacity .1s" onmouseover="this.style.opacity='.75'" onmouseout="this.style.opacity='1'">
-      ${p?`
-        <div style="font-size:10px;font-weight:700;color:${ocuColor};line-height:1.5">${p.pct}%</div>
-        <div style="font-size:10px;color:#8B1F1F;line-height:1.5;font-weight:600">${p.sal}</div>
-        <div style="font-size:10px;color:var(--blue-t);line-height:1.5">${p.lle}</div>
-        <div style="font-size:10px;color:var(--amber-t);line-height:1.5;cursor:pointer" onclick="event.stopPropagation();openDesayunoEdit('${key}')" title="Cambiar quién hace desayuno">${p.des}${S.desOverrides['${key}']?' ✎':''}</div>
-        <div style="font-size:9px;font-weight:700;line-height:1.4;background:${solBg};border-radius:2px;color:${lsol>0?'#7A2050':'var(--text3)'}">${lsol>0?'+'+lsol:'—'}</div>
-      `:`<div style="font-size:9px;color:var(--text3);line-height:1.4">—</div>`}
-    </div>`;
+    const bg=isFest?'rgba(226,75,74,0.07)':isWE?'rgba(163,45,45,0.04)':'var(--surface2)';
+    html+=`<td onclick="openLimpiezasDay('${key}')" style="padding:3px 2px;text-align:center;border-right:1px solid var(--border);border-bottom:2px solid var(--border2);background:${bg};cursor:pointer;font-family:'DM Mono',monospace">
+      ${p?`<div style="font-size:10px;font-weight:700;color:${ocuColor};line-height:1.4">${p.pct}%</div>
+           <div style="font-size:10px;color:#8B1F1F;line-height:1.4;font-weight:600">${p.sal}</div>
+           <div style="font-size:10px;color:var(--blue-t);line-height:1.4">${p.lle}</div>
+           <div style="font-size:10px;color:var(--amber-t);line-height:1.4" onclick="event.stopPropagation();openDesayunoDay('${key}')">${p.des}${S.desOverrides[key]?' ✎':''}</div>
+           <div style="font-size:10px;font-weight:700;color:${lsol>0?'#7A2050':'var(--text3)'};line-height:1.4;background:${lsol>0?'rgba(122,32,80,0.1)':'transparent'};border-radius:2px">${lsol>0?'+'+lsol:'—'}</div>`
+        :'<div style="font-size:9px;color:var(--text3)">—</div>'}
+    </td>`;
   }
+  html+='</tr></thead><tbody>';
 
-  // ── Filas de trabajadores por departamento ──
+  // Filas de trabajadores
   const depts=[
     {label:'LIMPIEZA',workers:WL},
     {label:'RECEPCIÓN',workers:WR},
@@ -965,92 +961,78 @@ function renderCal(){
   ];
 
   depts.forEach(dept=>{
-    html+=`<div class="dept-sep">${dept.label}</div>`;
+    // Separador departamento
+    html+=`<tr><td colspan="${dIM+1}" style="padding:4px 10px;background:var(--surface2);font-size:10px;font-weight:700;color:var(--text3);letter-spacing:.7px;text-transform:uppercase;border-bottom:1px solid var(--border);position:sticky;left:0">${dept.label}</td></tr>`;
+
     dept.workers.forEach(w=>{
-      html+=`<div class="cal-wcell">
-        <div class="wav" style="background:${w.color};color:${w.tc}">${w.name.slice(0,2).toUpperCase()}</div>
-        <span style="font-size:11px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;flex:1">${w.name}</span>
-        ${w.ett?`<span class="badge bETT" style="font-size:9px;padding:1px 4px">ETT</span>`:''}
-      </div>`;
-      for(let d=1;d<=_dIM2;d++){
+      html+=`<tr>
+        <td style="padding:6px 10px;background:var(--surface2);border-right:1px solid var(--border);border-bottom:1px solid var(--border);position:sticky;left:0;z-index:2;white-space:nowrap">
+          <div style="display:flex;align-items:center;gap:6px">
+            <div class="wav" style="background:${w.color};color:${w.tc};width:22px;height:22px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:8.5px;font-weight:700;flex-shrink:0">${w.name.slice(0,2).toUpperCase()}</div>
+            <span style="font-size:12px;font-weight:600">${w.name}</span>
+            ${w.ett?`<span class="badge bETT" style="font-size:9px;padding:1px 4px">ETT</span>`:''}
+          </div>
+        </td>`;
+
+      const isLimp=dept.label==='LIMPIEZA';
+      for(let d=1;d<=dIM;d++){
         const key=makeDateKey(d);
         const dt=new Date(S.year,S.month-1,d);
         const dow=dt.getDay();
         const isWE=dow===0||dow===6;
         const isFest=FESTIVOS.includes(key);
-        const isLimp=dept.label==='LIMPIEZA';
-
-        let sh=w.ett ? getShiftETT(w.id,key) : getShift(w.id,key);
+        let sh=w.ett?getShiftETT(w.id,key):getShift(w.id,key);
         const cls=SHIFT_CLS[sh]||'bF';
         const lbl=SHIFT_LBL[sh]||'·';
+        const bg=isFest?'rgba(226,75,74,0.07)':isWE?'rgba(163,45,45,0.03)':'';
 
-        // Info extra para limpieza: desglose sal+sol y ☕
-        let extraInfo='';
+        // Info extra limpieza
+        let extra='';
         const plan=calcPlanDia(key);
         const lsolDia=S.limpSol[key]||0;
-
-        if(isLimp && sh!=='F' && sh!=='V' && sh!=='R' && sh!==''){
-          // Leer siempre el override manual primero — tiene prioridad sobre el plan
+        if(isLimp && sh && sh!=='F' && sh!=='V' && sh!=='R'){
           const habOvW=S.habOverrides[key]?.[w.id];
-          const isManual=habOvW && typeof habOvW==='object';
-
-          let dSal=0, dSol=0, isZC=false;
-
-          if(isManual){
-            // Override manual: usar directamente
-            dSal=habOvW.sal||0;
-            dSol=habOvW.sol||0;
-          } else {
-            // Sin override: leer del plan calculado
+          const isManual=habOvW&&typeof habOvW==='object';
+          let dSal=0,dSol=0,isZC=false;
+          if(isManual){ dSal=habOvW.sal||0; dSol=habOvW.sol||0; }
+          else{
             const habN=plan.asig?.[w.id];
-            if(habN==='ZC'){
-              isZC=true;
-            } else if(typeof habN==='number' && habN>0){
+            if(habN==='ZC') isZC=true;
+            else if(typeof habN==='number'&&habN>0){
               const pDay=PMS.find(x=>x.d===key);
               const totalSal=pDay?pDay.sal:0;
               const totalHab=totalSal+lsolDia;
-              if(lsolDia>0 && totalHab>0){
-                dSol=Math.round(habN*(lsolDia/totalHab));
-                dSal=habN-dSol;
-              } else {
-                dSal=habN; dSol=0;
-              }
+              if(lsolDia>0&&totalHab>0){ dSol=Math.round(habN*(lsolDia/totalHab)); dSal=habN-dSol; }
+              else { dSal=habN; }
             }
           }
-
-          if(isZC){
-            extraInfo=`<div style="font-size:10px;color:var(--amber-t);font-weight:700;line-height:1;margin-top:1px">ZC</div>`;
-          } else if(dSal>0 || dSol>0){
-            const underline=isManual?';text-decoration:underline dotted':'';
-            if(dSol>0){
-              extraInfo=`<div style="font-size:10px;font-weight:700;line-height:1;margin-top:1px${underline}">` +
-                `<span style="color:#8B1F1F">${dSal}</span>` +
-                `<span style="color:var(--text3)">+</span>` +
-                `<span style="color:#7A2050">${dSol}</span>` +
-                `</div>`;
-            } else {
-              extraInfo=`<div style="font-size:10px;font-weight:700;color:var(--text2);line-height:1;margin-top:1px${underline}">${dSal}h</div>`;
-            }
-          }
+          const ul=isManual?';text-decoration:underline dotted':'';
+          if(isZC) extra=`<div style="font-size:10px;color:var(--amber-t);font-weight:700;line-height:1;margin-top:1px">ZC</div>`;
+          else if(dSol>0) extra=`<div style="font-size:9px;font-weight:700;line-height:1;margin-top:1px${ul}"><span style="color:#8B1F1F">${dSal}</span><span style="color:var(--text3)">+</span><span style="color:#7A2050">${dSol}</span></div>`;
+          else if(dSal>0) extra=`<div style="font-size:10px;font-weight:700;color:var(--text2);line-height:1;margin-top:1px${ul}">${dSal}h</div>`;
         }
+        if(plan.desAsig===w.id && sh && sh!=='F') extra+=`<div style="font-size:9px;color:var(--blue-t);font-weight:700;line-height:1;margin-top:1px">☕</div>`;
 
-        // ☕ desayuno: se muestra en quien lo haga
-        if(plan.desAsig===w.id && sh!=='F' && sh!==''){
-          extraInfo+=`<div style="font-size:9px;color:var(--blue-t);font-weight:700;line-height:1;margin-top:1px">☕</div>`;
-        }
-
-        html+=`<div class="cal-dcell${isWE?' we':''}${isFest?' fest':''}" onclick="openEdit('${w.id}','${key}','${w.name}')"
-          title="${w.name} · ${key} · ${sh||'sin turno'}">
-          ${sh?`<span class="db badge ${cls}" style="font-size:9px;padding:2px 1px">${lbl}</span>`:`<span style="font-size:9px;color:var(--text3)">·</span>`}
-          ${extraInfo}
-        </div>`;
+        html+=`<td onclick="openEdit('${w.id}','${key}','${w.name}')"
+          style="padding:3px 1px;text-align:center;border-right:1px solid var(--border);border-bottom:1px solid var(--border);cursor:pointer;${bg?'background:'+bg+';':''}min-width:52px"
+          onmouseover="this.style.background='var(--blue-bg)'" onmouseout="this.style.background='${bg||''}'">
+          ${sh?`<span class="db badge ${cls}" style="font-size:11px;padding:3px 2px">${lbl}</span>`:`<span style="font-size:9px;color:var(--text3)">·</span>`}
+          ${extra}
+        </td>`;
       }
+      html+='</tr>';
     });
   });
 
-  html+='</div>';
+  html+='</tbody></table></div>';
+
+  // Alertas
+  document.getElementById('al-cal').innerHTML='';
+
   document.getElementById('cal-grid').innerHTML=html;
 }
+
+function openDesayunoDay(date){ openDesayunoEdit(date); }
 
 // ── VISTA DIARIA ──────────────────────────────────────────────────────────────
 function renderDaily(){
