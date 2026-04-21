@@ -1,227 +1,1734 @@
-// ═══════════════════════════════════════════════════════════════════
-// HOTEL PMS SYNC v2 — Google Apps Script
-// ═══════════════════════════════════════════════════════════════════
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Hotel Planner · HSL Aparthotel Silver</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+:root {
+  --bg: #F7F6F3;
+  --surface: #FFFFFF;
+  --surface2: #F0EFE9;
+  --border: rgba(0,0,0,0.08);
+  --border2: rgba(0,0,0,0.14);
+  --text: #1A1916;
+  --text2: #6B6860;
+  --text3: #A8A69E;
+  --accent: #1A1916;
+  --green-bg: #E8F5E2; --green-t: #2D6A1F;
+  --blue-bg:  #E3EEF9; --blue-t:  #1A4B7A;
+  --amber-bg: #FDF0D5; --amber-t: #7A4F10;
+  --red-bg:   #FCEAEA; --red-t:   #8B1F1F;
+  --purple-bg:#EEE8FA; --purple-t:#4B2EA0;
+  --gray-bg:  #EFEFEC; --gray-t:  #4A4842;
+  --pink-bg:  #FAE8F0; --pink-t:  #7A2050;
+  --radius: 10px;
+  --radius-sm: 6px;
+}
+/* Fallback si Google Fonts no carga (archivo local sin internet) */
+body { font-family: 'DM Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', Arial, sans-serif !important; }
+.ctable, .fes-table, .res-table, .ocu-bar, [style*="DM Mono"] { font-family: 'DM Mono', 'Courier New', monospace !important; }
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body {
+  font-family: 'DM Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', Arial, sans-serif;
+  background: var(--bg);
+  color: var(--text);
+  font-size: 13px;
+  height: 100vh;
+  overflow: hidden;
+}
+.app { display: flex; height: 100vh; }
 
-const CONFIG = {
-  REMITENTE:     'noreply@ulysescloud.com',
-  LABEL_OK:      'pms-procesado',
-  CARPETA_DRIVE: 'Hotel PMS Data',
-  ARCHIVO_JSON:  'pms_data.json',
-  ARCHIVO_LOG:   'pms_sync_log.json',
-};
+/* ── SIDEBAR ── */
+.sb {
+  width: 200px; min-width: 200px;
+  background: var(--surface);
+  border-right: 1px solid var(--border);
+  display: flex; flex-direction: column;
+  padding: 0;
+}
+.sb-logo {
+  padding: 18px 16px 14px;
+  border-bottom: 1px solid var(--border);
+}
+.sb-logo-name { font-size: 13px; font-weight: 600; letter-spacing: -.2px; }
+.sb-logo-sub  { font-size: 10.5px; color: var(--text3); margin-top: 2px; font-family: 'DM Mono', monospace; }
+.sb-section { padding: 14px 16px 4px; font-size: 10px; font-weight: 600; color: var(--text3); text-transform: uppercase; letter-spacing: .8px; }
+.sb-item {
+  display: flex; align-items: center; gap: 9px;
+  padding: 7px 12px; margin: 1px 6px;
+  border-radius: var(--radius-sm);
+  cursor: pointer; font-size: 12.5px; color: var(--text2);
+  transition: background .12s;
+}
+.sb-item:hover { background: var(--surface2); }
+.sb-item.on { background: var(--text); color: #fff; }
+.sb-item.on .sb-ic { color: #fff; }
+.sb-ic { font-size: 14px; width: 16px; text-align: center; color: var(--text3); }
+.sb-foot {
+  margin-top: auto;
+  padding: 12px 16px;
+  border-top: 1px solid var(--border);
+  font-size: 10.5px; color: var(--text3);
+  font-family: 'DM Mono', monospace;
+}
+.sb-dot { display: inline-block; width: 6px; height: 6px; border-radius: 50%; background: #4CAF50; margin-right: 5px; vertical-align: middle; }
 
-function procesarEmailsPMS() {
-  const label   = obtenerOCrearLabel(CONFIG.LABEL_OK);
-  const carpeta = obtenerOCrearCarpeta(CONFIG.CARPETA_DRIVE);
-  const query   = `from:${CONFIG.REMITENTE} -label:${CONFIG.LABEL_OK}`;
-  const threads = GmailApp.search(query);
+/* ── MAIN ── */
+.main { flex: 1; display: flex; flex-direction: column; overflow: hidden; min-width: 0; }
+.topbar {
+  background: var(--surface);
+  border-bottom: 1px solid var(--border);
+  padding: 10px 20px;
+  display: flex; align-items: center; gap: 10px;
+  flex-wrap: wrap;
+}
+.tb-title { font-size: 15px; font-weight: 600; letter-spacing: -.2px; }
+.tb-badge {
+  font-size: 10.5px; background: var(--surface2);
+  padding: 3px 9px; border-radius: 20px;
+  color: var(--text2); font-family: 'DM Mono', monospace;
+}
+.tb-right { margin-left: auto; display: flex; gap: 6px; }
+.btn {
+  padding: 6px 14px; border-radius: var(--radius-sm);
+  font-size: 12px; cursor: pointer; font-family: 'DM Sans', sans-serif;
+  border: 1px solid var(--border2); background: var(--surface);
+  color: var(--text); font-weight: 500; transition: background .12s;
+}
+.btn:hover { background: var(--surface2); }
+.btn-dark { background: var(--text); color: #fff; border-color: var(--text); }
+.btn-dark:hover { background: #333; }
 
-  if (threads.length === 0) { console.log('No hay emails nuevos.'); return; }
-  console.log(`${threads.length} emails nuevos de Septeo.`);
+/* ── CONTENT ── */
+.content { flex: 1; overflow: auto; padding: 16px 20px; }
 
-  let procesados = 0;
-  for (const thread of threads) {
-    for (const message of thread.getMessages()) {
-      for (const att of message.getAttachments()) {
-        const nombre = att.getName().toLowerCase();
-        if (!nombre.endsWith('.csv') && !nombre.endsWith('.xlsx')) continue;
-        try {
-          const texto  = att.getDataAsString('UTF-8');
-          const datos  = parsearCSVSepteo(texto);
-          if (datos.length > 0) {
-            guardarEnDrive(carpeta, datos, message.getDate());
-            procesados++;
-            console.log(`✓ ${nombre} — ${datos.length} días`);
-          }
-        } catch(e) { console.error(`✗ Error: ${e.message}`); }
-      }
-      thread.addLabel(label);
-    }
-  }
-  console.log(`Procesados: ${procesados}`);
+/* ── ALERTS ── */
+.alerts { display: flex; gap: 6px; margin-bottom: 12px; flex-wrap: wrap; }
+.ap {
+  padding: 4px 11px; border-radius: 20px;
+  font-size: 11.5px; font-weight: 500;
+  display: flex; align-items: center; gap: 5px;
+}
+.ap-d { background: var(--red-bg);   color: var(--red-t); }
+.ap-w { background: var(--amber-bg); color: var(--amber-t); }
+.ap-o { background: var(--green-bg); color: var(--green-t); }
+.ap-i { background: var(--blue-bg);  color: var(--blue-t); }
+
+/* ── BADGES ── */
+.badge {
+  display: inline-block; padding: 2px 7px;
+  border-radius: 5px; font-size: 11px; font-weight: 500;
+  white-space: nowrap; font-family: 'DM Mono', monospace;
+}
+.bM  { background: var(--green-bg);  color: var(--green-t); }
+.bT  { background: var(--blue-bg);   color: var(--blue-t); }
+.bN  { background: var(--purple-bg); color: var(--purple-t); }
+.bD  { background: #D6EEFF;          color: #0A3D6B; }
+.bF  { background: var(--gray-bg);   color: var(--gray-t); }
+.bV  { background: var(--amber-bg);  color: var(--amber-t); }
+.bR  { background: var(--pink-bg);   color: var(--pink-t); }
+.bFx { background: var(--red-bg);    color: var(--red-t); }
+.bHN { background: var(--green-bg);  color: var(--green-t); }
+.bETT{ background: var(--amber-bg);  color: var(--amber-t); }
+
+/* ── CARGA TABLE ── */
+.card {
+  background: var(--surface);
+  border-radius: var(--radius);
+  border: 1px solid var(--border);
+  overflow: hidden;
+}
+.ctable { width: 100%; border-collapse: collapse; font-size: 12px; }
+.ctable thead th {
+  padding: 9px 11px; font-size: 11px; font-weight: 600;
+  color: var(--text2); background: var(--surface2);
+  border-bottom: 1px solid var(--border);
+  white-space: nowrap; text-align: center; position: sticky; top: 0; z-index: 2;
+}
+.ctable thead th:first-child { text-align: left; min-width: 100px; }
+.ctable tbody td {
+  padding: 8px 11px; border-bottom: 1px solid var(--border);
+  text-align: center; vertical-align: middle;
+}
+.ctable tbody td:first-child { text-align: left; }
+.ctable tbody tr:last-child td { border-bottom: none; }
+.ctable tbody tr:hover td { background: var(--surface2); }
+.ctable tbody tr.row-we td { background: rgba(163,45,45,0.025); }
+.ctable tbody tr.row-fest td { background: rgba(226,75,74,0.06); }
+
+.estado { padding: 3px 9px; border-radius: 5px; font-size: 11px; font-weight: 600; font-family: 'DM Mono', monospace; }
+.e-ok    { background: var(--green-bg); color: var(--green-t); }
+.e-justo { background: var(--blue-bg);  color: var(--blue-t); }
+.e-warn  { background: var(--amber-bg); color: var(--amber-t); }
+.e-alert { background: var(--red-bg);   color: var(--red-t); }
+.e-hol   { background: var(--gray-bg);  color: var(--gray-t); }
+
+.ocu-wrap { display: flex; align-items: center; gap: 6px; }
+.ocu-bar  { width: 40px; height: 4px; border-radius: 2px; background: var(--surface2); overflow: hidden; flex-shrink: 0; }
+.ocu-fill { height: 100%; border-radius: 2px; }
+
+/* ── CALENDARIO ── */
+.cal-outer { overflow: auto; position: relative; }
+.cal-grid  { display: grid; background: var(--surface); border-radius: var(--radius); border: 1px solid var(--border); overflow: visible; min-width: max-content; }
+.cal-head  { display: contents; }
+.ch-spacer { background: var(--surface2); padding: 8px 10px; position: sticky; left: 0; z-index: 4; border-right: 1px solid var(--border); border-bottom: 1px solid var(--border); min-width: 140px; width: 140px; }
+.ch-day    { padding: 6px 2px; font-size: 11px; font-weight: 700; color: var(--text2); text-align: center; background: var(--surface2); border-right: 1px solid var(--border); border-bottom: 1px solid var(--border); min-width: 32px; }
+.ch-day.we { color: var(--red-t); background: #FDF5F5; }
+.ch-day.fest { background: var(--red-bg); }
+.cal-dept  { grid-column: 1 / -1; padding: 5px 12px; background: var(--surface2); font-size: 10px; font-weight: 700; color: var(--text3); letter-spacing: .7px; text-transform: uppercase; border-bottom: 1px solid var(--border); position: sticky; left: 0; }
+.cal-wcell {
+  padding: 6px 10px; font-size: 12px; font-weight: 600;
+  background: var(--surface2); border-right: 1px solid var(--border);
+  border-bottom: 1px solid var(--border);
+  display: flex; align-items: center; gap: 6px;
+  position: sticky; left: 0; z-index: 2; min-width: 140px; width: 140px;
+}
+.wav { width: 22px; height: 22px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 8.5px; font-weight: 700; flex-shrink: 0; }
+.cal-dcell {
+  padding: 3px 1px; text-align: center;
+  border-right: 1px solid var(--border); border-bottom: 1px solid var(--border);
+  cursor: pointer; min-width: 32px; position: relative;
+  min-height: 44px; display: flex; flex-direction: column; align-items: center; justify-content: center;
+}
+.cal-dcell:hover { background: var(--blue-bg); }
+.cal-dcell.we { background: rgba(163,45,45,0.03); }
+.cal-dcell.fest { background: rgba(226,75,74,0.07); }
+.db { display: block; padding: 3px 2px; border-radius: 4px; font-size: 11px; font-weight: 700; line-height: 1.5; font-family: 'DM Mono', monospace; }
+.dn { font-size: 8px; color: var(--text3); line-height: 1; margin-bottom: 1px; }
+
+/* ── VISTA DIARIA ── */
+.daily-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(230px, 1fr)); gap: 12px; margin-top: 14px; }
+.daily-card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 14px; }
+.daily-card-title { font-size: 11px; font-weight: 700; color: var(--text3); margin-bottom: 10px; text-transform: uppercase; letter-spacing: .6px; }
+.dw-row { display: flex; align-items: center; gap: 8px; padding: 6px 0; border-bottom: 1px solid var(--border); }
+.dw-row:last-child { border-bottom: none; }
+
+/* ── RESUMEN ── */
+.res-table { width: 100%; border-collapse: collapse; font-size: 12px; }
+.res-table th { padding: 8px 12px; border-bottom: 1px solid var(--border); font-weight: 600; color: var(--text2); text-align: center; background: var(--surface2); font-size: 11px; }
+.res-table th:first-child { text-align: left; }
+.res-table td { padding: 7px 12px; border-bottom: 1px solid var(--border); text-align: center; }
+.res-table td:first-child { text-align: left; font-weight: 500; }
+.res-table tr:hover td { background: var(--surface2); }
+.ra { width: 20px; height: 20px; border-radius: 50%; display: inline-flex; align-items: center; justify-content: center; font-size: 8px; font-weight: 700; margin-right: 6px; vertical-align: middle; }
+
+/* ── FESTIVOS ── */
+.fes-table { width: 100%; border-collapse: collapse; font-size: 12px; }
+.fes-table th { padding: 8px 12px; border-bottom: 1px solid var(--border); font-weight: 600; color: var(--text2); font-size: 11px; }
+.fes-table td { padding: 7px 12px; border-bottom: 1px solid var(--border); }
+.fes-table tr:hover td { background: var(--surface2); }
+.tag-pend { background: var(--amber-bg); color: var(--amber-t); padding: 2px 8px; border-radius: 5px; font-size: 10.5px; font-weight: 600; }
+.tag-rec  { background: var(--green-bg); color: var(--green-t); padding: 2px 8px; border-radius: 5px; font-size: 10.5px; font-weight: 600; }
+
+/* ── MODAL ── */
+.modal-bg { position: fixed; inset: 0; background: rgba(0,0,0,0.35); display: flex; align-items: center; justify-content: center; z-index: 200; }
+.modal {
+  background: var(--surface); border-radius: 14px;
+  border: 1px solid var(--border); padding: 22px;
+  width: 320px; max-height: 85vh; overflow-y: auto;
+  box-shadow: 0 20px 60px rgba(0,0,0,0.15);
+}
+.modal h3 { font-size: 15px; font-weight: 600; margin-bottom: 3px; }
+.modal-sub { font-size: 11.5px; color: var(--text2); margin-bottom: 16px; }
+.fg { margin-bottom: 12px; }
+.fg label { font-size: 11px; font-weight: 600; color: var(--text2); display: block; margin-bottom: 4px; text-transform: uppercase; letter-spacing: .4px; }
+.fg select, .fg input[type=date], .fg input[type=number] {
+  width: 100%; padding: 7px 10px; font-size: 12.5px;
+  border: 1px solid var(--border2); border-radius: var(--radius-sm);
+  background: var(--surface); color: var(--text);
+  font-family: 'DM Sans', sans-serif;
+}
+.fg select:focus, .fg input:focus { outline: 2px solid var(--text); outline-offset: 1px; }
+.mact { display: flex; justify-content: flex-end; gap: 8px; margin-top: 16px; }
+
+/* ── LEGEND ── */
+.legend { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 12px; }
+.li { display: flex; align-items: center; gap: 5px; font-size: 11px; color: var(--text2); }
+
+/* ── SEPARADORES DEPT EN CAL ── */
+.dept-sep {
+  grid-column: 1 / -1;
+  padding: 5px 12px;
+  background: var(--surface2);
+  border-bottom: 1px solid var(--border);
+  font-size: 10px; font-weight: 700;
+  color: var(--text3);
+  letter-spacing: .8px;
+  text-transform: uppercase;
+  position: sticky; left: 0;
+}
+/* Fila PMS cabecera — altura fija para los 4 datos */
+.cal-pms-label { line-height: 1.55; }
+.cal-head-row  { position: sticky; top: 0; z-index: 2; display: contents; }
+
+/* Date input */
+input[type=date] { cursor: pointer; }
+
+/* Scrollbar */
+::-webkit-scrollbar { width: 6px; height: 6px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: var(--border2); border-radius: 3px; }
+
+/* ── IMPRESIÓN PDF ── */
+@media print {
+  @page { size: A4 landscape; margin: 10mm; }
+  @page :first { size: A4 portrait; }
+
+  body { height: auto !important; overflow: visible !important; font-size: 11px; }
+  .app { display: block !important; height: auto !important; }
+  .sb { display: none !important; }
+  .main { display: block !important; overflow: visible !important; }
+  .topbar { display: none !important; }
+  .content { display: block !important; overflow: visible !important; padding: 0 !important; flex: none !important; }
+  .alerts { display: none !important; }
+
+  /* Secciones de impresión */
+  .print-section { display: block !important; page-break-before: always; padding: 0; }
+  .print-section:first-child { page-break-before: avoid; }
+  .print-title { font-size: 14px; font-weight: 700; margin-bottom: 8px; color: #1A1916; border-bottom: 1.5px solid #1A1916; padding-bottom: 4px; }
+  .print-subtitle { font-size: 10px; color: #6B6860; margin-bottom: 10px; }
+
+  /* Calendario */
+  .cal-outer { overflow: visible !important; }
+  .cal-grid { overflow: visible !important; border-radius: 0 !important; font-size: 8px; }
+  .cal-wcell { min-width: 100px !important; padding: 3px 6px !important; font-size: 10px !important; position: static !important; font-weight: 600 !important; }
+  .ch-spacer { position: static !important; }
+  .cal-dcell { min-width: 28px !important; min-height: 32px !important; padding: 2px !important; }
+  .db { font-size: 10px !important; padding: 2px 1px !important; }
+  .badge { font-size: 9px !important; padding: 1px 4px !important; }
+  .dept-sep { position: static !important; }
+  .ch-day { min-width: 20px !important; }
+
+  /* Tabla carga */
+  .ctable { font-size: 9px; }
+  .ctable thead th { font-size: 8px; padding: 4px 5px; position: static !important; }
+  .ctable tbody td { padding: 3px 5px; }
+
+  /* Resumen */
+  .res-table { font-size: 9px; }
+  .res-table th, .res-table td { padding: 4px 6px; }
+
+  /* Ocultar vistas no activas */
+  #v-carga, #v-cal, #v-resumen { display: block !important; }
+  #v-daily, #v-festivos { display: none !important; }
+
+  /* Cards sin sombras */
+  .card { box-shadow: none !important; border-radius: 0 !important; }
+  .modal-bg { display: none !important; }
+
+  /* Colores de fondo en impresión */
+  * { -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
+}
+</style>
+</head>
+<body>
+<div class="app" id="APP">
+<div class="sb">
+  <div class="sb-logo">
+    <div class="sb-logo-name">Hotel Planner</div>
+    <div class="sb-logo-sub">HSL Aparthotel Silver</div>
+  </div>
+  <div class="sb-section">Planning</div>
+  <div class="sb-item on"  onclick="sv('carga')">  <span class="sb-ic">⊞</span> Carga operativa</div>
+  <div class="sb-item"     onclick="sv('cal')">    <span class="sb-ic">▦</span> Calendario turnos</div>
+  <div class="sb-item"     onclick="sv('daily')">  <span class="sb-ic">◉</span> Vista diaria</div>
+  <div class="sb-item"     onclick="sv('resumen')"><span class="sb-ic">≡</span> Resumen mensual</div>
+  <div class="sb-section">Gestión</div>
+  <div class="sb-item"     onclick="sv('festivos')"><span class="sb-ic">★</span> Festivos</div>
+  <div class="sb-section">Datos</div>
+  <div class="sb-item" onclick="cargarDesdeDrive()" style="background:var(--green-bg);color:var(--green-t);font-weight:600;margin:2px 6px">
+    <span class="sb-ic" style="color:var(--green-t)">↻</span> Sync Drive
+  </div>
+  <div class="sb-item" onclick="document.getElementById('pms-file-input').click()">
+    <span class="sb-ic">↑</span> Cargar CSV manual
+  </div>
+  <div class="sb-item" onclick="sv('historico')"><span class="sb-ic">◫</span> Histórico anual</div>
+  <div class="sb-item" onclick="exportPDF()" style="background:var(--blue-bg);color:var(--blue-t);font-weight:600;margin:2px 6px">
+    <span class="sb-ic" style="color:var(--blue-t)">⎙</span> Exportar PDF
+  </div>
+  <input type="file" id="pms-file-input" accept=".xlsx,.csv,.xls" style="display:none" onchange="importPMS(this)">
+  <div class="sb-foot">
+    <span class="sb-dot" id="pms-dot"></span><span id="pms-status">Conectando con Drive...</span><br>
+    <span id="save-ts" style="color:var(--text3)">Guardado automático</span>
+  </div>
+</div>
+
+<div class="main">
+  <div class="topbar" id="topbar">
+    <div style="display:flex;align-items:center;gap:8px">
+    <div class="tb-title" id="tb-title">Carga operativa</div>
+    <div style="display:flex;align-items:center;gap:4px">
+      <button class="btn" style="padding:4px 7px;font-size:13px" onclick="changeMonth(-1)">&#8249;</button>
+      <span id="current-month-label" style="font-size:13px;font-weight:600;min-width:110px;text-align:center">Mayo 2026</span>
+      <button class="btn" style="padding:4px 7px;font-size:13px" onclick="changeMonth(1)">&#8250;</button>
+    </div>
+  </div>
+    <div class="tb-badge" id="tb-badge">Datos reales · HSL Aparthotel Silver</div>
+    <div class="tb-right">
+      <button class="btn" id="tb-btn" onclick="openLimpiezas()">+ Limpiezas solicitadas</button>
+    </div>
+  </div>
+
+  <div id="v-carga"   class="content"><div class="alerts" id="al-c"></div><div class="card"><table class="ctable" id="ct"><tbody id="ct-b"></tbody></table></div></div>
+  <div id="v-cal"     class="content" style="display:none"><div class="legend" id="cal-leg"></div><div class="alerts" id="al-cal"></div><div class="cal-outer"><div id="cal-grid"></div></div></div>
+  <div id="v-daily"   class="content" style="display:none">
+    <div style="display:flex;align-items:center;gap:10px">
+      <label style="font-size:12px;color:var(--text2);font-weight:600">FECHA</label>
+      <input type="date" id="daily-dt" id="daily-dt" min="2026-01-01" max="2026-12-31" onchange="renderDaily()" style="font-size:13px">
+    </div>
+    <div id="daily-body"></div>
+  </div>
+  <div id="v-resumen" class="content" style="display:none"><div class="card"><table class="res-table" id="res-t"></table></div></div>
+  <div id="v-historico" class="content" style="display:none">
+  <div style="font-size:15px;font-weight:600;margin-bottom:16px">Histórico anual · 2026</div>
+  <div id="hist-body"></div>
+</div>
+<div id="v-festivos" class="content" style="display:none">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px">
+      <div style="font-size:15px;font-weight:600">Festivos trabajados y recuperos</div>
+      <button class="btn btn-dark" onclick="openAddFestivo()">+ Añadir</button>
+    </div>
+    <div class="card"><table class="fes-table" id="fes-t"></table></div>
+  </div>
+</div>
+</div>
+<div id="MOD"></div>
+
+<script>
+// ── DATOS PMS (actualizables via importación) ────────────────────────────────
+const PMS_DEMO=[
+  {d:'2026-05-01',ocu:46,pct:93,sal:10,lle:14,des:8},
+  {d:'2026-05-02',ocu:48,pct:97,sal:13,lle:15,des:10},
+  {d:'2026-05-03',ocu:36,pct:73,sal:26,lle:14,des:12},
+  {d:'2026-05-04',ocu:42,pct:85,sal:8, lle:14,des:4},
+  {d:'2026-05-05',ocu:43,pct:87,sal:16,lle:17,des:2},
+  {d:'2026-05-06',ocu:45,pct:91,sal:15,lle:17,des:8},
+  {d:'2026-05-07',ocu:44,pct:89,sal:12,lle:11,des:8},
+  {d:'2026-05-08',ocu:45,pct:91,sal:13,lle:14,des:10},
+  {d:'2026-05-09',ocu:46,pct:93,sal:16,lle:17,des:6},
+  {d:'2026-05-10',ocu:37,pct:75,sal:20,lle:11,des:7},
+  {d:'2026-05-11',ocu:37,pct:75,sal:14,lle:14,des:7},
+  {d:'2026-05-12',ocu:40,pct:81,sal:7, lle:10,des:7},
+  {d:'2026-05-13',ocu:37,pct:75,sal:13,lle:10,des:9},
+  {d:'2026-05-14',ocu:39,pct:79,sal:10,lle:12,des:6},
+  {d:'2026-05-15',ocu:47,pct:95,sal:13,lle:21,des:8},
+  {d:'2026-05-16',ocu:48,pct:97,sal:10,lle:11,des:8},
+  {d:'2026-05-17',ocu:44,pct:89,sal:15,lle:11,des:13},
+  {d:'2026-05-18',ocu:47,pct:95,sal:12,lle:15,des:9},
+  {d:'2026-05-19',ocu:43,pct:87,sal:14,lle:10,des:9},
+  {d:'2026-05-20',ocu:44,pct:89,sal:18,lle:19,des:4},
+  {d:'2026-05-21',ocu:44,pct:89,sal:18,lle:18,des:13},
+  {d:'2026-05-22',ocu:47,pct:95,sal:5, lle:8, des:8},
+  {d:'2026-05-23',ocu:47,pct:95,sal:15,lle:15,des:13},
+  {d:'2026-05-24',ocu:40,pct:81,sal:20,lle:13,des:13},
+  {d:'2026-05-25',ocu:41,pct:83,sal:14,lle:15,des:14},
+  {d:'2026-05-26',ocu:39,pct:79,sal:11,lle:9, des:8},
+  {d:'2026-05-27',ocu:43,pct:87,sal:9, lle:13,des:6},
+  {d:'2026-05-28',ocu:47,pct:95,sal:10,lle:14,des:5},
+  {d:'2026-05-29',ocu:48,pct:97,sal:15,lle:16,des:12},
+  {d:'2026-05-30',ocu:44,pct:89,sal:21,lle:17,des:18},
+  {d:'2026-05-31',ocu:30,pct:61,sal:20,lle:6, des:13},
+];
+let PMS=[...PMS_DEMO];
+const FESTIVOS=['2026-05-01'];
+const DNAMES=['LU','MA','MI','JU','VI','SA','DO'];
+
+// ── TRABAJADORES ─────────────────────────────────────────────────────────────
+const WL=[
+  {id:'antonia', name:'Antonia', color:'#C8ECD9',tc:'#0D4A2A', safari:[7,2,7,5],offset:13,months:[2,10],cap:7,capD:3},
+  {id:'rossina',  name:'Rossina',  color:'#BDD5F2',tc:'#0C3A6E', safari:[7,2,7,5],offset:6, breakfast:true,cap:7,capD:3},
+  {id:'mercedes', name:'Mercedes', color:'#D5C8F5',tc:'#2E1A7A', safari:[7,2,7,5],offset:20,breakfast:true,cap:7,capD:3},
+  {id:'ingrid',   name:'Ingrid',   color:'#FAD89A',tc:'#5A3200', ett:true,cap:7, safari:[7,2,6,6],offset:6},
+  {id:'karen',    name:'Karen',    color:'#F5C0D5',tc:'#6A1030', ett:true,cap:7, safari:[6,2],offset:0},
+];
+const WR=[
+  {id:'dafne',    name:'Dafne',    color:'#C8ECD9',tc:'#0D4A2A'},
+  {id:'melisa',   name:'Melissa',  color:'#BDD5F2',tc:'#0C3A6E', safari:[6,4,6,2],offset:17},
+  {id:'celia',    name:'Celia',    color:'#D5C8F5',tc:'#2E1A7A', safari:[6,4,6,2],offset:3},
+  {id:'veronica', name:'Verónica', color:'#FAD89A',tc:'#5A3200', safari:[6,4,6,2],offset:10},
+  {id:'francesca',name:'Francesca',color:'#F5C0D5',tc:'#6A1030', workDays:5,restDays:2,offset:1},
+];
+const WN=[
+  {id:'chus',  name:'Chus',  color:'#D5C8F5',tc:'#2E1A7A', safari:[7,7],offset:3},
+  {id:'florin',name:'Florin',color:'#C8ECD9',tc:'#0D4A2A', safari:[7,7],offset:10},
+];
+const WM=[{id:'david',name:'David',color:'#FAD89A',tc:'#5A3200'}];
+const ALL=[...WL,...WR,...WN,...WM];
+
+// ── STATE ────────────────────────────────────────────────────────────────────
+// ── STATE MULTI-MES ─────────────────────────────────────────────────────────
+// S: datos del mes activo
+// HIST: histórico global (todos los meses)
+let S={overrides:{},limpSol:{},habOverrides:{},desOverrides:{},festivos:[],view:'carga',year:2026,month:5};
+const DRIVE_URL='https://script.google.com/macros/s/AKfycbxmZ17KbQt4lsKlfW2Baa7VFHTfWIGuwT7EVV58VWcrr0jSrmRvyx6KF0ZJGQ6t1ey_/exec';
+let HIST={};  // {"2026-05": {...datos mes}, "2026-06": {...}, ...}
+
+function monthKey(y,m){ return y+'-'+String(m).padStart(2,'0'); }
+function currentKey(){ return monthKey(S.year,S.month); }
+
+function showToast(msg,tipo){
+  const old=document.getElementById('sync-toast');
+  if(old) old.remove();
+  const colors={ok:'var(--green-bg)',error:'var(--red-bg)',info:'var(--blue-bg)',warn:'var(--amber-bg)'};
+  const tcols={ok:'var(--green-t)',error:'var(--red-t)',info:'var(--blue-t)',warn:'var(--amber-t)'};
+  const icons={ok:'✓',error:'✗',info:'↻',warn:'⚠'};
+  const t=document.createElement('div');
+  t.id='sync-toast';
+  t.style.cssText='position:fixed;bottom:20px;right:20px;z-index:9999;padding:10px 16px;border-radius:8px;font-size:12px;font-weight:500;background:'+colors[tipo]+';color:'+tcols[tipo]+';border:1px solid '+tcols[tipo]+';box-shadow:0 4px 12px rgba(0,0,0,0.15);display:flex;align-items:center;gap:8px;max-width:320px';
+  t.innerHTML='<span style="font-size:14px">'+icons[tipo]+'</span><span>'+msg+'</span>';
+  document.body.appendChild(t);
+  if(tipo!=='error') setTimeout(()=>{if(t.parentNode)t.remove();},4000);
 }
 
-// ═══════════════════════════════════════════════════════════════════
-// PARSEAR CSV DE SEPTEO — formato real del informe Service Forecast
-// Columnas: Fecha, Reservada, % Occ, Pax, Llegada, Salida, CAME,
-//           CUNA, DESAY, DESGR, DESMI, DESNI
-// ═══════════════════════════════════════════════════════════════════
-function parsearCSVSepteo(texto) {
-  const lineas = texto.split('\n').map(l => l.trim()).filter(l => l.length > 0);
-  if (lineas.length < 2) return [];
-
-  const sep = lineas[0].includes(';') ? ';' : ',';
-  const headers = lineas[0].split(sep).map(h => h.trim().toLowerCase().replace(/['"]/g,''));
-  console.log('Headers:', headers.join(' | '));
-
-  const datos = [];
-
-  for (let i = 1; i < lineas.length; i++) {
-    const cols = lineas[i].split(sep).map(c => c.trim().replace(/['"]/g,''));
-    if (cols.length < 3) continue;
-
-    const row = {};
-    headers.forEach((h, j) => { row[h] = cols[j] || '0'; });
-
-    // Detectar fecha — primera columna que tenga formato YYYY-MM-DD
-    let fecha = null;
-    for (const val of cols) {
-      if (/^\d{4}-\d{2}-\d{2}$/.test(val)) { fecha = val; break; }
-    }
-    if (!fecha) continue;
-
-    // Mapeo flexible — formato Septeo Service Forecast
-    // Columnas conocidas: fecha, reservada, % occ, pax, llegada, salida, came, cuna, desay...
-    const idx = {
-      fecha:    headers.indexOf('fecha'),
-      reservada:headers.indexOf('reservada'),
-      pct:      headers.indexOf('% occ'),
-      pax:      headers.indexOf('pax'),
-      llegada:  headers.indexOf('llegada'),
-      salida:   headers.indexOf('salida'),
-      desay:    headers.indexOf('desay'),
-    };
-
-    // Si no hay headers con nombre, usar posición fija del formato Septeo
-    const usarPosicion = idx.reservada === -1;
-
-    const item = {
-      d:   fecha,
-      ocu: parseInt(usarPosicion ? cols[1] : row['reservada'] || row['hab_ocupadas'] || 0) || 0,
-      pct: parseFloat(usarPosicion ? cols[2] : row['% occ'] || row['ocupacion_pct'] || 0) || 0,
-      sal: parseInt(usarPosicion ? cols[5] : row['salida'] || row['salidas'] || 0) || 0,
-      lle: parseInt(usarPosicion ? cols[4] : row['llegada'] || row['llegadas'] || 0) || 0,
-      des: parseInt(usarPosicion ? cols[8] : row['desay'] || row['desayunos'] || 0) || 0,
-    };
-
-    if (item.d) datos.push(item);
-  }
-
-  datos.sort((a, b) => a.d.localeCompare(b.d));
-  console.log(`Parseados ${datos.length} días. Primero: ${JSON.stringify(datos[0])}`);
-  return datos;
+function cargarDesdeDrive(){
+  const statusEl=document.getElementById('pms-status');
+  if(statusEl) statusEl.textContent='Sincronizando...';
+  showToast('Conectando con Drive...','info');
+  fetch(DRIVE_URL)
+    .then(r=>{ if(!r.ok) throw new Error('HTTP '+r.status); return r.json(); })
+    .then(todosMeses=>{
+      let mesesActualizados=0;
+      const MONTHS=['Ene','Feb','Mar','Abr','May','Jun','Jul','Ago','Sep','Oct','Nov','Dic'];
+      const mesesNombres=[];
+      Object.entries(todosMeses).forEach(([key,datos])=>{
+        if(!datos||datos.length===0) return;
+        const [y,m]=key.split('-').map(Number);
+        if(!HIST[key]) HIST[key]={};
+        HIST[key].pmsData=datos;
+        HIST[key].year=y; HIST[key].month=m;
+        mesesActualizados++;
+        mesesNombres.push(MONTHS[m-1]+' '+y+' ('+datos.length+'d)');
+      });
+      const key=currentKey();
+      if(HIST[key]&&HIST[key].pmsData){ PMS=HIST[key].pmsData; S.pmsData=PMS; }
+      try{ localStorage.setItem('hpl_hist_v1',JSON.stringify(HIST)); }catch(e){}
+      const ts=new Date().toLocaleTimeString('es',{hour:'2-digit',minute:'2-digit'});
+      if(statusEl) statusEl.textContent='Sync '+ts;
+      document.getElementById('save-ts').textContent='Último sync: '+ts;
+      const detalle=mesesNombres.length>0?mesesNombres.join(', '):'sin datos nuevos';
+      showToast('✓ PMS actualizado · '+ts+' — '+detalle,'ok');
+      refresh();
+    })
+    .catch(e=>{
+      console.warn('Drive sync fallido:',e.message);
+      if(statusEl) statusEl.textContent='Sin conexión';
+      showToast('Sin conexión con Drive — usando datos locales','warn');
+    });
 }
 
-// ═══════════════════════════════════════════════════════════════════
-// GUARDAR EN DRIVE — acumula todos los meses en un solo JSON
-// ═══════════════════════════════════════════════════════════════════
-function guardarEnDrive(carpeta, datos, fechaEmail) {
-  if (datos.length === 0) return;
-  const primerDia = datos[0].d;
-  const mes       = primerDia.slice(0, 7); // "2026-04"
+function loadAll(){
+  try{
+    const h=localStorage.getItem('hpl_hist_v1');
+    if(h) HIST=JSON.parse(h);
+  }catch(e){}
+  // Cargar mes activo (por defecto mayo 2026)
+  loadMonth(S.year, S.month);
+}
 
-  let todosMeses = {};
-  const iter = carpeta.getFilesByName(CONFIG.ARCHIVO_JSON);
-  let archivo = null;
-
-  if (iter.hasNext()) {
-    archivo = iter.next();
-    try { todosMeses = JSON.parse(archivo.getBlob().getDataAsString()); } catch(e) {}
-    todosMeses[mes] = datos;
-    archivo.setContent(JSON.stringify(todosMeses));
+function loadMonth(year, month){
+  const key=monthKey(year,month);
+  const saved=HIST[key];
+  if(saved){
+    S=Object.assign({overrides:{},limpSol:{},habOverrides:{},desOverrides:{},festivos:[],view:'carga'},saved);
   } else {
-    todosMeses[mes] = datos;
-    archivo = carpeta.createFile(CONFIG.ARCHIVO_JSON, JSON.stringify(todosMeses), 'application/json');
-    archivo.setSharing(DriveApp.Access.ANYONE_WITH_LINK, DriveApp.Permission.VIEW);
+    S={overrides:{},limpSol:{},habOverrides:{},desOverrides:{},festivos:[],view:S.view||'carga',year,month};
+  }
+  S.year=year; S.month=month;
+  // Limpiar caches
+  Object.keys(_recCache).forEach(k=>delete _recCache[k]);
+  Object.keys(_planCache).forEach(k=>delete _planCache[k]);
+  // Si es mayo 2026, cargar PMS demo
+  if(year===2026 && month===5 && (!S.pmsData||S.pmsData.length===0)){
+    S.pmsData=[...PMS_DEMO];
+  }
+  if(S.pmsData && S.pmsData.length>0) PMS=S.pmsData;
+  else PMS=[];
+}
+
+function save(){
+  const key=currentKey();
+  HIST[key]=Object.assign({},S,{year:S.year,month:S.month});
+  try{localStorage.setItem('hpl_hist_v1',JSON.stringify(HIST));}catch(e){
+    console.warn('localStorage lleno, limpiando meses antiguos...');
+  }
+  document.getElementById('save-ts').textContent='Guardado '+new Date().toLocaleTimeString('es',{hour:'2-digit',minute:'2-digit'});
+}
+
+function switchMonth(year, month){
+  save(); // guardar mes actual
+  loadMonth(year, month);
+  updateMonthUI();
+  refresh();
+}
+
+function updateMonthUI(){
+  const MONTHS=['Enero','Febrero','Marzo','Abril','Mayo','Junio','Julio','Agosto','Septiembre','Octubre','Noviembre','Diciembre'];
+  document.getElementById('current-month-label').textContent=MONTHS[S.month-1]+' '+S.year;
+  document.getElementById('tb-badge').textContent='HSL Aparthotel Silver · '+MONTHS[S.month-1]+' '+S.year;
+  // Actualizar selector
+  const sel=document.getElementById('month-sel');
+  if(sel) sel.value=currentKey();
+}
+
+// ── SAFARI ───────────────────────────────────────────────────────────────────
+const JAN1=new Date(2026,0,1);
+function getDaysInMonth(){ return new Date(S.year,S.month,0).getDate(); }
+function getMonthStr(){ return S.year+'-'+String(S.month).padStart(2,'0'); }
+function makeDateKey(d){ return getMonthStr()+'-'+String(d).padStart(2,'0'); }
+function doy(d){return Math.round((new Date(d+'T12:00:00')-JAN1)/86400000);}
+function clen(c){return c.reduce((a,b)=>a+b,0);}
+function isWork(cycle,pos){let cum=0;for(let i=0;i<cycle.length;i++){cum+=cycle[i];if(pos<cum)return i%2===0;}return false;}
+
+// Turno base sin equilibrio (para uso interno del balanceador)
+function getShiftRaw(wid,date){
+  const w=ALL.find(x=>x.id===wid); if(!w) return '';
+  const m=parseInt(date.slice(5,7));
+  if(w.ett) return '';
+  if(wid==='david'){const dow=new Date(date+'T12:00:00').getDay();return dow===0?'F':dow===6?'M':'HN';}
+  if(wid==='dafne'){const dow=new Date(date+'T12:00:00').getDay();return(dow>=1&&dow<=5)?'M':'F';}
+  if(w.safari){
+    if(w.months&&!(m>=w.months[0]&&m<=w.months[1]))return 'F';
+    const pos=((doy(date)+w.offset)%clen(w.safari)+clen(w.safari))%clen(w.safari);
+    if(!isWork(w.safari,pos))return 'F';
+    if(FESTIVOS.includes(date))return 'F!';
+    if(wid==='celia')return 'T';
+    if(wid==='chus'||wid==='florin')return 'N';
+    return 'M';
+  }
+  if(w.workDays){
+    const total=w.workDays+w.restDays;
+    const pos=((doy(date)+(w.offset||0))%total+total)%total;
+    return pos<w.workDays?'M':'F';
+  }
+  return '';
+}
+
+// Cache de turnos balanceados de recepcion por fecha
+const _recCache={};
+function calcRecepcionTurnos(date){
+  if(_recCache[date]) return _recCache[date];
+  const result={};
+  const FLEXIBLES=['veronica','francesca'];
+  const FIJOS=['dafne','melisa','celia'];
+
+  // 1. Asignar fijos
+  for(const wid of FIJOS){
+    if(S.overrides[date]?.[wid]){ result[wid]=S.overrides[date][wid]; continue; }
+    result[wid]=getShiftRaw(wid,date);
   }
 
-  // Log
-  actualizarLog(carpeta, {
-    timestamp: new Date().toISOString(),
-    mes, dias: datos.length,
-    rango: `${primerDia} → ${datos[datos.length-1].d}`,
-    muestra: datos[0],
+  // 2. Contar mañanas y tardes de fijos
+  let man=Object.values(result).filter(s=>s==='M').length;
+  let tar=Object.values(result).filter(s=>s==='T').length;
+
+  // 3. Asignar flexibles con equilibrio
+  for(const wid of FLEXIBLES){
+    if(S.overrides[date]?.[wid]){ result[wid]=S.overrides[date][wid]; continue; }
+    const raw=getShiftRaw(wid,date);
+    if(raw==='F'||raw===''){ result[wid]='F'; continue; }
+    // Regla: tarde vacía → tarde; mañanas llenas (>=2) → tarde; si no → mañana
+    let asignar;
+    if(tar<1) asignar='T';
+    else if(man>=2) asignar='T';
+    else asignar='M';
+    result[wid]=asignar;
+    if(asignar==='M') man++; else tar++;
+  }
+
+  _recCache[date]=result;
+  return result;
+}
+
+function getShift(wid,date){
+  if(S.overrides[date]?.[wid]) return S.overrides[date][wid];
+  if(wid==='veronica'||wid==='francesca') return calcRecepcionTurnos(date)[wid]||'F';
+  return getShiftRaw(wid,date);
+}
+
+function clearRecCache(date){ delete _recCache[date]; delete _planCache[date]; }
+
+// ── FUNCIÓN CENTRAL: planificación diaria de limpieza ───────────────────────
+// Umbral de salidas a partir del cual David hace desayuno (editable)
+
+
+
+// ── FUNCIÓN CENTRAL: planificación diaria de limpieza ───────────────────────
+// Umbral de salidas a partir del cual David hace desayuno (editable)
+const UMBRAL_DAVID_DES = 14;
+
+const _planCache={};
+function calcPlanDia(date){
+  if(_planCache[date]) return _planCache[date];
+  const p=PMS.find(x=>x.d===date);
+  if(!p){ _planCache[date]={}; return {}; }
+
+  const lsol=S.limpSol[date]||0;
+  const totalCarga=p.sal+lsol;
+
+  // Camareras fijas que trabajan hoy
+  const fijas=WL.filter(w=>!w.ett&&['M','F!'].includes(getShift(w.id,date)));
+
+  // ── REGLA DESAYUNO ──────────────────────────────────────────────────────────
+  // Prioridad:
+  //   1. Rossina o Mercedes (siempre primero, si está disponible)
+  //   2. Francesca (si sal >= umbral y Rossina/Mercedes no disponibles)
+  //   3. David (solo si Francesca también tiene fiesta)
+  // Desayuno: Rossina si trabaja → Mercedes si no → Francesca si sal>20
+  // Desayuno: override manual primero, luego lógica automática
+  let desAsig=S.desOverrides[date]||null;
+  if(!desAsig && p.des>0){
+    const rosShift=getShift('rossina',date);
+    if(['M','F!','MR'].includes(rosShift)) desAsig='rossina';
+    if(!desAsig){
+      const merShift=getShift('mercedes',date);
+      if(['M','F!','MR'].includes(merShift)) desAsig='mercedes';
+    }
+    if(!desAsig && p.sal>20){
+      if(['M','T','F!','MR','TR'].includes(getShift('francesca',date))) desAsig='francesca';
+    }
+  }
+
+  // ── CAPACIDADES ─────────────────────────────────────────────────────────────
+  const caps={};
+  let capFijas=0;
+  for(const w of fijas){
+    // Si esta camarera hace desayuno → capacidad reducida
+    caps[w.id]=(w.id===desAsig)?w.capD:w.cap;
+    capFijas+=caps[w.id];
+  }
+
+  // ── ASIGNACIÓN DE HABITACIONES (override manual o proporcional) ─────────────
+  const asig={};
+  // Aplicar overrides manuales primero
+  const habOv=S.habOverrides[date]||{};
+  let pendiente=totalCarga;
+  let capRestante=capFijas;
+  // Primera pasada: asignar overrides
+  // Siempre guardamos el total como número en asig para que el resto del código funcione
+  const sinOverride=[];
+  let ocupadoPorOverride=0;
+  for(const w of fijas){
+    if(habOv[w.id]!==undefined){
+      const ov=habOv[w.id];
+      const total=typeof ov==='object'?(ov.sal||0)+(ov.sol||0):ov;
+      asig[w.id]=total;  // siempre número
+      ocupadoPorOverride+=total;
+    } else {
+      sinOverride.push(w);
+    }
+  }
+  // Segunda pasada: repartir el resto proporcionalmente
+  pendiente=Math.max(0,totalCarga-ocupadoPorOverride);
+  capRestante=sinOverride.reduce((a,w)=>a+caps[w.id],0);
+  for(let i=0;i<sinOverride.length;i++){
+    const w=sinOverride[i];
+    if(i===sinOverride.length-1){
+      asig[w.id]=Math.min(Math.max(0,pendiente),caps[w.id]);
+    } else {
+      const prop=capRestante>0?Math.round(pendiente*(caps[w.id]/capRestante)):0;
+      asig[w.id]=Math.min(prop,caps[w.id]);
+      pendiente-=asig[w.id];
+      capRestante-=caps[w.id];
+    }
+  }
+
+  // ── LÓGICA ETT ──────────────────────────────────────────────────────────────
+  // Sobrante de habitaciones que no cubren las fijas
+  const cubierto=Object.values(asig).reduce((a,b)=>a+b,0);
+  let sobrante=Math.max(0,totalCarga-cubierto);
+  let tardeAsignada=false;
+
+  for(const ettId of ['ingrid','karen']){
+    const ov=S.overrides[date]?.[ettId];
+    if(ov){
+      if(['M','F!'].includes(ov) && sobrante>0){ const h=Math.min(sobrante,7); asig[ettId]=h; sobrante-=h; }
+      else if(ov==='T'){ asig[ettId]='ZC'; }
+      else { asig[ettId]=0; }
+      continue;
+    }
+    // Respetar descanso del ciclo 6/1
+    const ettW=WL.find(x=>x.id===ettId);
+    if(ettW && ettW.safari){
+      const doy_val=doy(date);
+      const cl=clen(ettW.safari);
+      const pos=((doy_val+ettW.offset)%cl+cl)%cl;
+      if(!isWork(ettW.safari,pos)){ asig[ettId]=0; continue; } // día libre
+    }
+    if(sobrante>0){
+      const h=Math.min(sobrante,7); asig[ettId]=h; sobrante-=h;
+    } else {
+      if(!tardeAsignada){ asig[ettId]='ZC'; tardeAsignada=true; }
+      else { asig[ettId]=0; }
+    }
+  }
+
+  const result={
+    asig, desAsig, totalCarga, capFijas,
+    sobrante:Math.max(0,sobrante),
+    // compatibilidad con calcCarga anterior
+    fijas, cap:capFijas,
+    need:totalCarga, lsol,
+    gap:capFijas-totalCarga,
+    ettNec:sobrante>0?Math.ceil(sobrante/7):0
+  };
+  _planCache[date]=result;
+  return result;
+}
+
+// Alias para compatibilidad con el resto del código
+function calcCarga(p){ return calcPlanDia(p.d); }
+function calcHabAsignadas(date){ return calcPlanDia(date); }
+
+function clearHabCache(date){ delete _planCache[date]; }
+function clearPlanCache(date){ delete _planCache[date]; }
+
+// Turno efectivo de ETT — respeta ciclo 6/1 y lógica de carga
+function getShiftETT(ettId,date){
+  const ov=S.overrides[date]?.[ettId];
+  if(ov) return ov;
+  const w=WL.find(x=>x.id===ettId);
+
+  if(ettId==='ingrid'){
+    // Ingrid: siempre TARDE salvo que haya sobrante de habitaciones
+    // que las fijas no pueden cubrir (entonces va a mañana)
+    if(w&&w.safari){
+      const doy_val=doy(date);const cl=clen(w.safari);
+      const pos=((doy_val+w.offset)%cl+cl)%cl;
+      if(!isWork(w.safari,pos)) return 'F';
+    }
+    const h=calcPlanDia(date);const hab=h.asig?.['ingrid'];
+    // Solo va a mañana si tiene habitaciones asignadas POR SOBRANTE
+    // (cuando las fijas no llegan y necesita cubrir más salidas)
+    if(typeof hab==='number'&&hab>0&&h.sobrante>0) return 'M';
+    // En cualquier otro caso: tarde (zonas comunes o limpiezas solicitadas)
+    return 'T';
+  }
+
+  if(ettId==='karen'){
+    // Karen: ciclo propio [6,2] + complementaria a Ingrid
+    // 1. Verificar si Karen descansa según su ciclo
+    if(w&&w.safari){
+      const doy_val=doy(date);const cl=clen(w.safari);
+      const pos=((doy_val+w.offset)%cl+cl)%cl;
+      if(!isWork(w.safari,pos)) return 'F';
+    }
+    // 2. Si Karen trabaja: ver qué hace Ingrid
+    const ingridShift=getShiftETT('ingrid',date);
+    if(ingridShift==='F'){
+      // Ingrid descansa → Karen cubre la tarde
+      return 'T';
+    } else {
+      // Ingrid trabaja → Karen mañana si hay carga asignada
+      const h=calcPlanDia(date);const hab=h.asig?.['karen'];
+      if(typeof hab==='number'&&hab>0) return 'M';
+      return 'F';
+    }
+  }
+
+  return 'F';
+}
+
+// ── RENDER CARGA ─────────────────────────────────────────────────────────────
+function renderCarga(){
+  const diasAlert=PMS.filter(p=>calcCarga(p).gap<-7).length;
+  const diasWarn =PMS.filter(p=>{const g=calcCarga(p).gap;return g<0&&g>=-7;}).length;
+  const diasOk   =PMS.filter(p=>calcCarga(p).gap>=0).length;
+  document.getElementById('al-c').innerHTML=`
+    <div class="ap ap-d">▲ ${diasAlert} días necesitan 2+ ETT</div>
+    <div class="ap ap-w">● ${diasWarn} días necesitan 1 ETT</div>
+    <div class="ap ap-o">✓ ${diasOk} días cubiertos con fijas</div>
+    <div class="ap ap-i">1 mayo festivo — Rossina y Mercedes generan recupero</div>`;
+
+  const t=document.getElementById('ct');
+  t.innerHTML=`<thead><tr>
+    <th style="text-align:left">Fecha</th>
+    <th>Hab.</th><th>Ocu%</th><th>Salidas</th><th>Limp.sol.</th><th>Total</th>
+    <th>Antonia</th><th>Rossina</th><th>Mercedes</th><th>David</th>
+    <th>Capacidad</th><th>ETT nec.</th><th>Estado</th>
+  </tr></thead><tbody id="ct-b"></tbody>`;
+
+  let rows='';
+  const _dIM=getDaysInMonth();
+  for(const p of PMS){
+    const dt=new Date(p.d+'T12:00:00');
+    const dow=dt.getDay();
+    const ds=DNAMES[dow===0?6:dow-1];
+    const isWE=dow===0||dow===6;
+    const isFest=FESTIVOS.includes(p.d);
+    const c=calcCarga(p);
+    const lsol=S.limpSol[p.d]||0;
+
+    function wb(wid){
+      const plan=calcPlanDia(p.d);
+      const sh=getShift(wid,p.d);
+      const isD=plan.desAsig===wid;
+      if(!['M','F!','HN'].includes(sh))return `<span style="color:var(--text3)">—</span>`;
+      const lbl=isD?(sh==='F!'?'F!+☕':'M+☕'):(sh==='F!'?'F!':'M');
+      const cls=isD?'bD':sh==='F!'?'bFx':'bM';
+      return `<span class="badge ${cls}">${lbl}</span>`;
+    }
+
+    let elbl,ecls;
+    if(c.gap>=7){elbl='Holgado';ecls='e-hol';}
+    else if(c.gap>=0){elbl='Cubierto';ecls='e-ok';}
+    else if(c.gap>=-7){elbl=`-${Math.abs(c.gap)} hab`;ecls='e-warn';}
+    else{elbl=`-${Math.abs(c.gap)} hab`;ecls='e-alert';}
+
+    const ettB=c.ettNec>0
+      ?`<span class="badge bETT">${c.ettNec} ETT</span>`
+      :`<span style="color:var(--text3)">—</span>`;
+
+    const bc=p.pct>=90?'#D94040':p.pct>=75?'#C07020':'#3A8A2A';
+    const lsolB=lsol>0
+      ?`<button onclick="openLimpiezasDay('${p.d}')" style="font-size:12px;font-weight:700;padding:1px 7px;border:1px solid var(--border2);border-radius:4px;background:none;cursor:pointer;color:var(--text)">${lsol} ✎</button>`
+      :`<button onclick="openLimpiezasDay('${p.d}')" style="font-size:10px;padding:1px 7px;border:1px dashed var(--border2);border-radius:4px;background:none;cursor:pointer;color:var(--text3)">+ añadir</button>`;
+
+    rows+=`<tr class="${isFest?'row-fest':isWE?'row-we':''}">
+      <td><strong style="font-family:'DM Mono',monospace">${p.d.slice(8)}</strong> <span style="color:var(--text3);font-size:11px">${ds}${isFest?' 🔴':''}</span></td>
+      <td><div class="ocu-wrap"><div class="ocu-bar"><div class="ocu-fill" style="width:${p.pct}%;background:${bc}"></div></div>${p.ocu}</div></td>
+      <td style="font-family:'DM Mono',monospace">${p.pct}%</td>
+      <td><strong>${p.sal}</strong></td>
+      <td>${lsolB}</td>
+      <td><strong>${c.need}</strong></td>
+      <td>${wb('antonia')}</td><td>${wb('rossina')}</td><td>${wb('mercedes')}</td><td>${wb('david')}</td>
+      <td><strong>${c.cap}</strong></td>
+      <td>${ettB}</td>
+      <td><span class="estado ${ecls}">${elbl}</span></td>
+    </tr>`;
+  }
+  document.getElementById('ct-b').innerHTML=rows;
+}
+
+// ── RENDER CALENDARIO ─────────────────────────────────────────────────────────
+function renderCal(){
+  const SHIFT_CLS={M:'bM',T:'bT',N:'bN',D:'bD',F:'bF',V:'bV',R:'bR','F!':'bFx',HN:'bHN',MR:'bR',TR:'bR','':''};
+  const SHIFT_LBL={M:'M',T:'T',N:'N',D:'D',F:'F',V:'V',R:'R','F!':'F!',HN:'HN',MR:'M(R)',TR:'T(R)','':'·'};
+
+  const leg=document.getElementById('cal-leg');
+  const defs=[['bM','Mañana'],['bT','Tarde'],['bN','Noche'],['bD','Desayuno'],['bF','Descanso'],['bFx','Festivo'],['bR','Recupero'],['bV','Vacaciones']];
+  leg.innerHTML=defs.map(([c,l])=>`<div class="li"><span class="badge ${c}" style="font-size:10px">${l[0]}</span><span>${l}</span></div>`).join('');
+
+  const dIM=getDaysInMonth();
+
+  // ── Tabla HTML (sticky fiable en todos los navegadores) ──
+  let html=`<div style="overflow-x:auto;overflow-y:visible">
+  <table style="border-collapse:collapse;table-layout:fixed;width:max-content">
+  <colgroup>
+    <col style="width:142px;min-width:142px">
+    ${Array(dIM).fill('<col style="width:52px;min-width:52px">').join('')}
+  </colgroup>
+  <thead>`;
+
+  // Fila 1: días
+  html+=`<tr style="background:var(--surface2)">
+    <th style="padding:6px 10px;text-align:left;border-right:1px solid var(--border);border-bottom:1px solid var(--border);position:sticky;left:0;z-index:3;background:var(--surface2);font-size:11px;font-weight:600;color:var(--text3)">TRABAJADOR</th>`;
+  for(let d=1;d<=dIM;d++){
+    const dt=new Date(S.year,S.month-1,d);
+    const dow=dt.getDay();
+    const isWE=dow===0||dow===6;
+    const key=makeDateKey(d);
+    const isFest=FESTIVOS.includes(key);
+    const color=isFest?'var(--red-bg)':isWE?'#FDF5F5':'var(--surface2)';
+    const tcol=isWE||isFest?'var(--red-t)':'var(--text2)';
+    html+=`<th style="padding:5px 2px;text-align:center;border-right:1px solid var(--border);border-bottom:1px solid var(--border);background:${color};color:${tcol};font-size:11px;font-weight:700">
+      <div style="font-size:9px;font-weight:500">${['LU','MA','MI','JU','VI','SA','DO'][dow===0?6:dow-1]}</div>
+      <div>${d}</div>
+    </th>`;
+  }
+  html+='</tr>';
+
+  // Fila 2: datos PMS
+  html+=`<tr>
+    <td style="padding:4px 8px;background:var(--surface2);border-right:1px solid var(--border);border-bottom:2px solid var(--border2);position:sticky;left:0;z-index:2;font-size:9px;font-weight:700;color:var(--text3)">
+      <div style="color:var(--red-t)">↑ Ocu%</div>
+      <div style="color:#8B1F1F">↓ Sal.</div>
+      <div style="color:var(--blue-t)">↑ Lle.</div>
+      <div style="color:var(--amber-t);cursor:pointer">☕ Des.</div>
+      <div style="color:#7A2050">+ Sol.</div>
+    </td>`;
+  for(let d=1;d<=dIM;d++){
+    const key=makeDateKey(d);
+    const dt=new Date(S.year,S.month-1,d);
+    const dow=dt.getDay();
+    const isWE=dow===0||dow===6;
+    const isFest=FESTIVOS.includes(key);
+    const p=PMS.find(x=>x.d===key);
+    const lsol=S.limpSol[key]||0;
+    const ocuColor=p?(p.pct>=90?'#C03030':p.pct>=75?'#9A6010':'#2A7A1A'):'var(--text3)';
+    const bg=isFest?'rgba(226,75,74,0.07)':isWE?'rgba(163,45,45,0.04)':'var(--surface2)';
+    html+=`<td onclick="openLimpiezasDay('${key}')" style="padding:3px 2px;text-align:center;border-right:1px solid var(--border);border-bottom:2px solid var(--border2);background:${bg};cursor:pointer;font-family:'DM Mono',monospace">
+      ${p?`<div style="font-size:10px;font-weight:700;color:${ocuColor};line-height:1.4">${p.pct}%</div>
+           <div style="font-size:10px;color:#8B1F1F;line-height:1.4;font-weight:600">${p.sal}</div>
+           <div style="font-size:10px;color:var(--blue-t);line-height:1.4">${p.lle}</div>
+           <div style="font-size:10px;color:var(--amber-t);line-height:1.4" onclick="event.stopPropagation();openDesayunoDay('${key}')">${p.des}${S.desOverrides[key]?' ✎':''}</div>
+           <div style="font-size:10px;font-weight:700;color:${lsol>0?'#7A2050':'var(--text3)'};line-height:1.4;background:${lsol>0?'rgba(122,32,80,0.1)':'transparent'};border-radius:2px">${lsol>0?'+'+lsol:'—'}</div>`
+        :'<div style="font-size:9px;color:var(--text3)">—</div>'}
+    </td>`;
+  }
+  html+='</tr></thead><tbody>';
+
+  // Filas de trabajadores
+  const depts=[
+    {label:'LIMPIEZA',workers:WL},
+    {label:'RECEPCIÓN',workers:WR},
+    {label:'NOCHE',workers:WN},
+    {label:'MANTENIMIENTO',workers:WM},
+  ];
+
+  depts.forEach(dept=>{
+    // Separador departamento
+    html+=`<tr><td colspan="${dIM+1}" style="padding:4px 10px;background:var(--surface2);font-size:10px;font-weight:700;color:var(--text3);letter-spacing:.7px;text-transform:uppercase;border-bottom:1px solid var(--border);position:sticky;left:0">${dept.label}</td></tr>`;
+
+    dept.workers.forEach(w=>{
+      html+=`<tr>
+        <td style="padding:6px 10px;background:var(--surface2);border-right:1px solid var(--border);border-bottom:1px solid var(--border);position:sticky;left:0;z-index:2;white-space:nowrap">
+          <div style="display:flex;align-items:center;gap:6px">
+            <div class="wav" style="background:${w.color};color:${w.tc};width:22px;height:22px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:8.5px;font-weight:700;flex-shrink:0">${w.name.slice(0,2).toUpperCase()}</div>
+            <span style="font-size:12px;font-weight:600">${w.name}</span>
+            ${w.ett?`<span class="badge bETT" style="font-size:9px;padding:1px 4px">ETT</span>`:''}
+          </div>
+        </td>`;
+
+      const isLimp=dept.label==='LIMPIEZA';
+      for(let d=1;d<=dIM;d++){
+        const key=makeDateKey(d);
+        const dt=new Date(S.year,S.month-1,d);
+        const dow=dt.getDay();
+        const isWE=dow===0||dow===6;
+        const isFest=FESTIVOS.includes(key);
+        let sh=w.ett?getShiftETT(w.id,key):getShift(w.id,key);
+        const cls=SHIFT_CLS[sh]||'bF';
+        const lbl=SHIFT_LBL[sh]||'·';
+        const bg=isFest?'rgba(226,75,74,0.07)':isWE?'rgba(163,45,45,0.03)':'';
+
+        // Info extra limpieza
+        let extra='';
+        const plan=calcPlanDia(key);
+        const lsolDia=S.limpSol[key]||0;
+        if(isLimp && sh && sh!=='F' && sh!=='V' && sh!=='R'){
+          const habOvW=S.habOverrides[key]?.[w.id];
+          const isManual=habOvW&&typeof habOvW==='object';
+          let dSal=0,dSol=0,isZC=false;
+          if(isManual){ dSal=habOvW.sal||0; dSol=habOvW.sol||0; }
+          else{
+            const habN=plan.asig?.[w.id];
+            if(habN==='ZC') isZC=true;
+            else if(typeof habN==='number'&&habN>0){
+              const pDay=PMS.find(x=>x.d===key);
+              const totalSal=pDay?pDay.sal:0;
+              const totalHab=totalSal+lsolDia;
+              if(lsolDia>0&&totalHab>0){ dSol=Math.round(habN*(lsolDia/totalHab)); dSal=habN-dSol; }
+              else { dSal=habN; }
+            }
+          }
+          const ul=isManual?';text-decoration:underline dotted':'';
+          if(isZC) extra=`<div style="font-size:10px;color:var(--amber-t);font-weight:700;line-height:1;margin-top:1px">ZC</div>`;
+          else if(dSol>0) extra=`<div style="font-size:9px;font-weight:700;line-height:1;margin-top:1px${ul}"><span style="color:#8B1F1F">${dSal}</span><span style="color:var(--text3)">+</span><span style="color:#7A2050">${dSol}</span></div>`;
+          else if(dSal>0) extra=`<div style="font-size:10px;font-weight:700;color:var(--text2);line-height:1;margin-top:1px${ul}">${dSal}h</div>`;
+        }
+        if(plan.desAsig===w.id && sh && sh!=='F') extra+=`<div style="font-size:9px;color:var(--blue-t);font-weight:700;line-height:1;margin-top:1px">☕</div>`;
+
+        html+=`<td onclick="openEdit('${w.id}','${key}','${w.name}')"
+          style="padding:3px 1px;text-align:center;border-right:1px solid var(--border);border-bottom:1px solid var(--border);cursor:pointer;${bg?'background:'+bg+';':''}min-width:52px"
+          onmouseover="this.style.background='var(--blue-bg)'" onmouseout="this.style.background='${bg||''}'">
+          ${sh?`<span class="db badge ${cls}" style="font-size:11px;padding:3px 2px">${lbl}</span>`:`<span style="font-size:9px;color:var(--text3)">·</span>`}
+          ${extra}
+        </td>`;
+      }
+      html+='</tr>';
+    });
   });
 
-  console.log(`✓ Drive actualizado: ${mes} con ${datos.length} días`);
-  console.log(`URL: https://drive.google.com/uc?export=download&id=${archivo.getId()}`);
+  html+='</tbody></table></div>';
+
+  // Alertas
+  document.getElementById('al-cal').innerHTML='';
+
+  document.getElementById('cal-grid').innerHTML=html;
 }
 
-function actualizarLog(carpeta, entry) {
-  let log = [];
-  const iter = carpeta.getFilesByName(CONFIG.ARCHIVO_LOG);
-  if (iter.hasNext()) {
-    const f = iter.next();
-    try { log = JSON.parse(f.getBlob().getDataAsString()); } catch(e) {}
-    log.unshift(entry);
-    if (log.length > 100) log = log.slice(0, 100);
-    f.setContent(JSON.stringify(log, null, 2));
+function openDesayunoDay(date){ openDesayunoEdit(date); }
+
+// ── VISTA DIARIA ──────────────────────────────────────────────────────────────
+function renderDaily(){
+  const d=document.getElementById('daily-dt').value;
+  if(!d)return;
+  const p=PMS.find(x=>x.d===d);
+  const c=p?calcCarga(p):null;
+  const dt=new Date(d+'T12:00:00');
+  const dow=dt.getDay();
+  const ds=DNAMES[dow===0?6:dow-1];
+  const isFest=FESTIVOS.includes(d);
+
+  const SHIFT_LBL_FULL={M:'Mañana',T:'Tarde',N:'Noche',D:'Desayuno',F:'Descanso',V:'Vacaciones',R:'Recupero','F!':'Festivo trab.',HN:'Horario normal','':'—'};
+  const SHIFT_CLS={M:'bM',T:'bT',N:'bN',D:'bD',F:'bF',V:'bV',R:'bR','F!':'bFx',HN:'bHN',MR:'bR',TR:'bR','':''};
+
+  let html=`<div class="card" style="padding:18px;margin-bottom:14px">
+    <div style="font-size:18px;font-weight:600;margin-bottom:6px">
+      ${ds} ${d.slice(8)} de mayo
+      ${isFest?'<span class="badge bFx" style="font-size:11px;vertical-align:middle">Festivo</span>':''}
+    </div>`;
+  if(p){
+    const bc=p.pct>=90?'#D94040':p.pct>=75?'#C07020':'#3A8A2A';
+    html+=`<div style="display:flex;gap:20px;flex-wrap:wrap;margin-top:10px">
+      <div><div style="font-size:10px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:.5px">Ocupación</div><div style="font-size:24px;font-weight:600;color:${bc}">${p.pct}%</div></div>
+      <div><div style="font-size:10px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:.5px">Habitaciones</div><div style="font-size:24px;font-weight:600">${p.ocu}<span style="font-size:13px;color:var(--text2)">/49</span></div></div>
+      <div><div style="font-size:10px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:.5px">Salidas</div><div style="font-size:24px;font-weight:600;color:var(--red-t)">${p.sal}</div></div>
+      <div><div style="font-size:10px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:.5px">Llegadas</div><div style="font-size:24px;font-weight:600;color:var(--blue-t)">${p.lle}</div></div>
+      <div><div style="font-size:10px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:.5px">Desayunos</div><div style="font-size:24px;font-weight:600">${p.des}</div></div>
+    </div>`;
+    if(c){
+      const ettTxt=c.ettNec>0
+        ?`<span class="badge bETT">Necesita ${c.ettNec} ETT</span>`
+        :`<span class="badge bM">Cubierto con fijas</span>`;
+      html+=`<div style="margin-top:12px;padding-top:12px;border-top:1px solid var(--border);display:flex;gap:10px;align-items:center;flex-wrap:wrap;font-size:12px">
+        <span style="color:var(--text2)">Carga limpieza:</span><strong>${c.need} hab</strong>
+        ${c.lsol>0?`<span style="font-size:11px;color:var(--text3)">(${p.sal} sal + ${c.lsol} sol.)</span>`:''}
+        <button onclick="openLimpiezasDay('${d}')" style="font-size:11px;padding:2px 8px;border:1px dashed var(--border2);border-radius:4px;background:none;cursor:pointer;color:var(--text3)">${c.lsol>0?'✎ editar':'+ limpiezas'}</button>
+        <span style="color:var(--text3)">·</span>
+        <span style="color:var(--text2)">Capacidad fijas:</span><strong>${c.cap} hab</strong>
+        <span style="color:var(--text3)">·</span>
+        ${ettTxt}
+      </div>`;
+    }
+  }
+  html+='</div>';
+
+  html+=`<div class="daily-grid">`;
+  const depts=[
+    {label:'Limpieza',workers:WL},{label:'Recepción',workers:WR},
+    {label:'Noche',workers:WN},{label:'Mantenimiento',workers:WM},
+  ];
+  depts.forEach(dept=>{
+    html+=`<div class="daily-card"><div class="daily-card-title">${dept.label}</div>`;
+    dept.workers.forEach(w=>{
+      const sh=getShift(w.id,d);
+      const isD=c&&w.id===c.desAsig;
+      const lbl=(SHIFT_LBL_FULL[sh]||'—')+(isD?' + Desayuno':'');
+      const cls=isD?'bD':(SHIFT_CLS[sh]||'bF');
+      html+=`<div class="dw-row">
+        <div class="wav" style="background:${w.color};color:${w.tc};width:22px;height:22px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:8.5px;font-weight:700;flex-shrink:0">${w.name.slice(0,2).toUpperCase()}</div>
+        <span style="font-size:12px;flex:1">${w.name}</span>
+        <span class="badge ${cls}" style="font-size:10.5px">${lbl}</span>
+      </div>`;
+    });
+    html+='</div>';
+  });
+  html+='</div>';
+  document.getElementById('daily-body').innerHTML=html;
+}
+
+// ── RESUMEN ───────────────────────────────────────────────────────────────────
+function renderResumen(){
+  const SH_H={M:8,T:7,N:8,D:6,'F!':8,HN:8,R:0,F:0,V:0,'':0};
+  const depts=['Limpieza','Recepción','Noche','Mantenimiento'];
+  const deptOf=w=>WL.find(x=>x.id===w.id)?'Limpieza':WR.find(x=>x.id===w.id)?'Recepción':WN.find(x=>x.id===w.id)?'Noche':'Mantenimiento';
+
+  let html=`<thead><tr>
+    <th style="text-align:left">Trabajador</th>
+    <th>Trabaja</th><th>Descansa</th><th>Vacaciones</th>
+    <th>Fest.trab.</th><th>Recuperos</th><th>Horas est.</th><th>Depart.</th>
+  </tr></thead><tbody>`;
+
+  ALL.forEach(w=>{
+    if(w.ett)return;
+    let trab=0,desc=0,vac=0,fest=0,rec=0,h=0;
+    const _rDIM=getDaysInMonth();
+    for(let d=1;d<=_rDIM;d++){
+      const key=makeDateKey(d);
+      const sh=getShift(w.id,key);
+      if(['M','T','N','D','HN','F!'].includes(sh)){trab++;h+=SH_H[sh]||8;}
+      else if(sh==='F')desc++;
+      else if(sh==='V')vac++;
+      else if(sh==='R')rec++;
+      if(sh==='F!')fest++;
+    }
+    const dp=deptOf(w);
+    html+=`<tr>
+      <td><span class="ra" style="background:${w.color};color:${w.tc}">${w.name.slice(0,2).toUpperCase()}</span>${w.name}</td>
+      <td>${trab}</td><td>${desc}</td><td>${vac||'—'}</td>
+      <td>${fest>0?`<span class="badge bFx">${fest}</span>`:'—'}</td>
+      <td>${rec||'—'}</td>
+      <td style="font-family:'DM Mono',monospace;font-weight:600">${h}h</td>
+      <td style="font-size:11px;color:var(--text2)">${dp}</td>
+    </tr>`;
+  });
+  html+='</tbody>';
+  document.getElementById('res-t').innerHTML=html;
+}
+
+// ── FESTIVOS ──────────────────────────────────────────────────────────────────
+function renderFestivos(){
+  // Auto-detectar
+  ALL.forEach(w=>{
+    FESTIVOS.forEach(f=>{
+      const sh=getShift(w.id,f);
+      if(['M','T','N','D','HN','F!'].includes(sh)){
+        if(!S.festivos.find(x=>x.wid===w.id&&x.fecha===f))
+          S.festivos.push({id:Date.now()+Math.random(),wid:w.id,name:w.name,fecha:f,recDate:'',status:'pendiente'});
+      }
+    });
+  });
+  save();
+
+  if(!S.festivos.length){
+    document.getElementById('fes-t').innerHTML='<tr><td style="padding:20px;color:var(--text3)">No hay festivos registrados.</td></tr>';
+    return;
+  }
+  let html=`<thead><tr>
+    <th>Trabajador</th><th>Festivo trabajado</th><th>Día de recupero</th><th>Estado</th><th>Acción</th>
+  </tr></thead><tbody>`;
+  S.festivos.forEach(f=>{
+    html+=`<tr>
+      <td style="font-weight:500">${f.name}</td>
+      <td style="font-family:'DM Mono',monospace">${f.fecha}</td>
+      <td>${f.recDate?`<span style="font-family:'DM Mono',monospace">${f.recDate}</span>`:'<span style="color:var(--red-t);font-size:11px">Sin asignar</span>'}</td>
+      <td><span class="${f.status==='recuperado'?'tag-rec':'tag-pend'}">${f.status==='recuperado'?'Recuperado':'Pendiente'}</span></td>
+      <td><button class="btn" style="font-size:11px;padding:3px 9px" onclick="editFestivo('${f.id}')">Editar</button></td>
+    </tr>`;
+  });
+  html+='</tbody>';
+  document.getElementById('fes-t').innerHTML=html;
+}
+
+// ── MODALES ───────────────────────────────────────────────────────────────────
+function closeM(){document.getElementById('MOD').innerHTML='';}
+
+function openEdit(wid,key,name){
+  const cur=getShift(wid,key)||'F';
+  const isLimpWorker=WL.find(x=>x.id===wid);
+  const opts=Object.entries({M:'Mañana',T:'Tarde',N:'Noche',D:'Desayuno',F:'Descanso',V:'Vacaciones',R:'Recupero',MR:'Mañana con recupero M(R)',TR:'Tarde con recupero T(R)','F!':'Festivo trabajado'})
+    .map(([k,v])=>`<option value="${k}"${k===cur?' selected':''}>${v}</option>`).join('');
+
+  // Para camareras de limpieza que trabajan: mostrar desglose editable
+  let habFields='';
+  if(isLimpWorker && ['M','F!','T'].includes(cur)){
+    const plan=calcPlanDia(key);
+    const habOv=S.habOverrides[key]?.[wid];
+    const habN=plan.asig?.[wid];
+    const p=PMS.find(x=>x.d===key);
+    const lsol=S.limpSol[key]||0;
+    const totalSal=p?p.sal:0;
+
+    // Calcular desglose actual (auto o manual)
+    let curSal=0, curSol=0;
+    if(habOv && typeof habOv==='object'){
+      curSal=habOv.sal||0; curSol=habOv.sol||0;
+    } else if(typeof habN==='number' && habN>0){
+      if(lsol>0 && (totalSal+lsol)>0){
+        curSol=Math.round(habN*(lsol/(totalSal+lsol)));
+        curSal=habN-curSol;
+      } else { curSal=habN; curSol=0; }
+    }
+
+    habFields=`
+      <div style="border-top:1px solid var(--border);margin-top:12px;padding-top:12px">
+        <div style="font-size:11px;font-weight:700;color:var(--text2);text-transform:uppercase;letter-spacing:.4px;margin-bottom:8px">
+          Habitaciones asignadas <span style="font-weight:400;color:var(--text3)">(dejar en 0 = automático)</span>
+        </div>
+        <div style="display:flex;gap:10px;align-items:flex-end">
+          <div class="fg" style="flex:1;margin-bottom:0">
+            <label style="color:#8B1F1F">Salidas</label>
+            <input type="number" id="me-sal" min="0" max="7" value="${curSal}" style="text-align:center">
+          </div>
+          <div style="font-size:18px;color:var(--text3);padding-bottom:6px">+</div>
+          <div class="fg" style="flex:1;margin-bottom:0">
+            <label style="color:#7A2050">Solicitadas</label>
+            <input type="number" id="me-sol" min="0" max="7" value="${curSol}" style="text-align:center">
+          </div>
+          <div style="font-size:14px;color:var(--text3);padding-bottom:6px">=</div>
+          <div style="padding-bottom:4px;min-width:30px;text-align:center">
+            <div style="font-size:10px;color:var(--text3)">Total</div>
+            <div id="me-total" style="font-size:16px;font-weight:700">${curSal+curSol}</div>
+          </div>
+        </div>
+        ${habOv?`<div style="margin-top:6px"><button onclick="clearHabOv('${wid}','${key}')" style="font-size:11px;color:var(--red-t);background:none;border:none;cursor:pointer;padding:0">✕ Volver a asignación automática</button></div>`:''}
+      </div>`;
+  }
+
+  modal(`Editar turno`,`${name} · ${key}`,`
+    <div class="fg"><label>Turno</label><select id="me-sh">${opts}</select></div>
+    ${habFields}`,
+    `saveEdit('${wid}','${key}')`);
+
+  // Actualizar total en tiempo real
+  setTimeout(()=>{
+    const sal=document.getElementById('me-sal');
+    const sol=document.getElementById('me-sol');
+    const tot=document.getElementById('me-total');
+    if(sal&&sol&&tot){
+      const upd=()=>{ tot.textContent=parseInt(sal.value||0)+parseInt(sol.value||0); };
+      sal.addEventListener('input',upd); sol.addEventListener('input',upd);
+    }
+  },50);
+}
+
+function clearHabOv(wid,key){
+  if(S.habOverrides[key]) delete S.habOverrides[key][wid];
+  clearHabCache(key);
+  save(); closeM(); refresh();
+}
+
+function saveEdit(wid,key){
+  const sh=document.getElementById('me-sh').value;
+  if(!S.overrides[key])S.overrides[key]={};
+  S.overrides[key][wid]=sh;
+
+  // Guardar override de habitaciones si se han tocado
+  const salEl=document.getElementById('me-sal');
+  const solEl=document.getElementById('me-sol');
+  if(salEl&&solEl){
+    const sal=parseInt(salEl.value)||0;
+    const sol=parseInt(solEl.value)||0;
+    if(sal>0||sol>0){
+      if(!S.habOverrides[key])S.habOverrides[key]={};
+      S.habOverrides[key][wid]={sal,sol};
+    }
+  }
+
+  clearRecCache(key);
+  clearHabCache(key);
+  if(sh==='F!'&&!S.festivos.find(f=>f.wid===wid&&f.fecha===key)){
+    const w=ALL.find(x=>x.id===wid);
+    S.festivos.push({id:Date.now(),wid,name:w?.name||wid,fecha:key,recDate:'',status:'pendiente'});
+  }
+  save();closeM();refresh();
+}
+
+function openLimpiezas(){
+  let rows='';
+  PMS.forEach(p=>{
+    const dt=new Date(p.d+'T12:00:00');
+    const dow=dt.getDay();
+    const ds=DNAMES[dow===0?6:dow-1];
+    rows+=`<div style="display:flex;align-items:center;gap:8px;padding:5px 0;border-bottom:1px solid var(--border)">
+      <span style="font-size:11px;font-family:'DM Mono',monospace;min-width:90px">${p.d.slice(5)} ${ds}</span>
+      <input type="number" min="0" max="20" value="${S.limpSol[p.d]||0}" id="ls-${p.d}"
+        style="width:55px;text-align:center">
+      <span style="font-size:11px;color:var(--text2)">hab. solicitan limpieza</span>
+    </div>`;
+  });
+  document.getElementById('MOD').innerHTML=`<div class="modal-bg">
+    <div class="modal" style="width:420px;max-height:80vh">
+      <h3>Limpiezas solicitadas</h3>
+      <div class="modal-sub">Habitaciones ocupadas que piden limpieza · Mayo 2026</div>
+      <div style="max-height:55vh;overflow-y:auto">${rows}</div>
+      <div class="mact">
+        <button class="btn" onclick="closeM()">Cancelar</button>
+        <button class="btn btn-dark" onclick="saveLimpiezas()">Guardar todo</button>
+      </div>
+    </div>
+  </div>`;
+}
+function openLimpiezasDay(fecha){
+  const dt=new Date(fecha+'T12:00:00');
+  const ds=DNAMES[dt.getDay()===0?6:dt.getDay()-1];
+  const actual=S.limpSol[fecha]||0;
+  const esEdicion=actual>0;
+  modal(
+    esEdicion?'Editar limpiezas solicitadas':'Limpiezas solicitadas',
+    fecha+' · '+ds+(esEdicion?' · Valor actual: '+actual:''),
+    '<div class="fg"><label>Habitaciones que piden limpieza</label>'+
+    '<input type="number" id="lsd-v" min="0" max="20" value="'+actual+'">'+
+    '<div style="font-size:11px;color:var(--text3);margin-top:5px">'+
+    (esEdicion?'Cambia el número o pon 0 para borrarlo.':'Número de habitaciones que han pedido limpieza hoy.')+
+    '</div></div>',
+    "saveLimpiezasDay('"+fecha+"')");
+}
+function saveLimpiezas(){
+  PMS.forEach(p=>{const el=document.getElementById('ls-'+p.d);if(el)S.limpSol[p.d]=parseInt(el.value)||0;});
+  save();closeM();renderCarga();
+}
+function saveLimpiezasDay(f){
+  S.limpSol[f]=parseInt(document.getElementById('lsd-v').value)||0;
+  save();closeM();renderCarga();
+}
+
+function openAddFestivo(){
+  const wOpts=ALL.map(w=>`<option value="${w.id}">${w.name}</option>`).join('');
+  modal('Añadir festivo trabajado','',`
+    <div class="fg"><label>Trabajador</label><select id="af-w">${wOpts}</select></div>
+    <div class="fg"><label>Fecha festivo</label><input type="date" id="af-f" value="2026-05-01"></div>
+    <div class="fg"><label>Fecha recupero (opcional)</label><input type="date" id="af-r"></div>`,
+    'saveAddFestivo()');
+}
+function saveAddFestivo(){
+  const wid=document.getElementById('af-w').value;
+  const f=document.getElementById('af-f').value;
+  const r=document.getElementById('af-r').value;
+  const w=ALL.find(x=>x.id===wid);
+  if(!S.festivos.find(x=>x.wid===wid&&x.fecha===f))
+    S.festivos.push({id:Date.now(),wid,name:w?.name||wid,fecha:f,recDate:r,status:'pendiente'});
+  save();closeM();renderFestivos();
+}
+function editFestivo(id){
+  const f=S.festivos.find(x=>String(x.id)===String(id));
+  if(!f)return;
+  modal('Editar recupero',`${f.name} · ${f.fecha}`,`
+    <div class="fg"><label>Fecha de recupero</label><input type="date" id="ef-r" value="${f.recDate||''}"></div>
+    <div class="fg"><label>Estado</label><select id="ef-s">
+      <option value="pendiente"${f.status==='pendiente'?' selected':''}>Pendiente</option>
+      <option value="recuperado"${f.status==='recuperado'?' selected':''}>Recuperado</option>
+    </select></div>`,`saveEditFestivo('${id}')`);
+}
+function saveEditFestivo(id){
+  const f=S.festivos.find(x=>String(x.id)===String(id));
+  if(f){f.recDate=document.getElementById('ef-r').value;f.status=document.getElementById('ef-s').value;}
+  save();closeM();renderFestivos();
+}
+
+function modal(title,sub,body,onSave){
+  document.getElementById('MOD').innerHTML=`<div class="modal-bg" onclick="if(event.target===this)closeM()">
+    <div class="modal">
+      <h3>${title}</h3>${sub?`<div class="modal-sub">${sub}</div>`:''}
+      ${body}
+      <div class="mact">
+        <button class="btn" onclick="closeM()">Cancelar</button>
+        <button class="btn btn-dark" onclick="${onSave}">Guardar</button>
+      </div>
+    </div>
+  </div>`;
+}
+
+// ── NAVEGACIÓN ────────────────────────────────────────────────────────────────
+const VIEW_CFG={
+  carga: {title:'Carga operativa · Mayo 2026', badge:'Datos reales · PMS', btn:'+ Limpiezas solicitadas', btnFn:'openLimpiezas()'},
+  cal:   {title:'Calendario de turnos · Mayo 2026', badge:'Todos los departamentos', btn:'+ Turno manual', btnFn:'openManual()'},
+  daily: {title:'Vista diaria · Mayo 2026', badge:'Detalle por persona', btn:'+ Turno manual', btnFn:'openManual()'},
+  resumen:{title:'Resumen mensual · Mayo 2026', badge:'Todos los trabajadores', btn:'', btnFn:''},
+  festivos:{title:'Festivos y recuperos · 2026', badge:'Control de festivos trabajados', btn:'+ Añadir festivo', btnFn:'openAddFestivo()'},
+};
+
+function openManual(){
+  const wOpts=ALL.map(w=>`<option value="${w.id}">${w.name}</option>`).join('');
+  const shOpts=Object.entries({M:'Mañana',T:'Tarde',N:'Noche',D:'Desayuno',F:'Descanso',V:'Vacaciones',R:'Recupero','F!':'Festivo trab.'})
+    .map(([k,v])=>`<option value="${k}">${v}</option>`).join('');
+  modal('Turno manual','Sobreescribe el turno calculado',`
+    <div class="fg"><label>Trabajador</label><select id="mm-w">${wOpts}</select></div>
+    <div class="fg"><label>Fecha</label><input type="date" id="mm-d" value="2026-05-01" min="2026-05-01" max="2026-05-31"></div>
+    <div class="fg"><label>Turno</label><select id="mm-s">${shOpts}</select></div>`,
+    'saveManual()');
+}
+function saveManual(){
+  const wid=document.getElementById('mm-w').value;
+  const key=document.getElementById('mm-d').value;
+  const sh=document.getElementById('mm-s').value;
+  if(!S.overrides[key])S.overrides[key]={};
+  S.overrides[key][wid]=sh;
+  clearRecCache(key);
+  clearHabCache(key);
+  save();closeM();refresh();
+}
+
+
+function renderHistorico(){
+  const MONTHS=['Ene','Feb','Mar','Abr','May','Jun','Jul','Ago','Sep','Oct','Nov','Dic'];
+  const MONTHS_FULL=['Enero','Febrero','Marzo','Abril','Mayo','Junio','Julio','Agosto','Septiembre','Octubre','Noviembre','Diciembre'];
+  const SH_H={M:8,T:7,N:8,D:6,'F!':8,HN:8,MR:8,TR:7,R:0,F:0,V:0,'':0};
+
+  // Calcular meses con datos
+  const mesesConDatos=Object.keys(HIST).sort();
+  if(mesesConDatos.length===0){
+    document.getElementById('hist-body').innerHTML='<div style="color:var(--text3);padding:20px 0">Aún no hay histórico. Los datos se acumulan mes a mes automáticamente.</div>';
+    return;
+  }
+
+  const ALL_W_HIST=[...WL.filter(w=>!w.ett),...WR,...WN,...WM];
+
+  // Tabla resumen por trabajador × mes
+  let html=`<div style="overflow:auto">
+    <table class="res-table" style="min-width:600px">
+      <thead><tr>
+        <th style="text-align:left;min-width:120px">Trabajador</th>
+        ${mesesConDatos.map(k=>`<th>${MONTHS_FULL[parseInt(k.slice(5))-1]}<br><span style="font-weight:400;font-size:10px">${k.slice(0,4)}</span></th>`).join('')}
+        <th style="background:var(--surface2)">Total</th>
+      </tr></thead><tbody>`;
+
+  ALL_W_HIST.forEach(w=>{
+    let totalTrab=0, totalHoras=0, totalFest=0, totalRec=0, totalVac=0;
+    const celdas=mesesConDatos.map(key=>{
+      const mesData=HIST[key];
+      if(!mesData) return '<td>—</td>';
+      const [y,m]=key.split('-').map(Number);
+      const daysInMonth=new Date(y,m,0).getDate();
+      let trab=0,horas=0,fest=0,vac=0;
+      for(let d=1;d<=daysInMonth;d++){
+        const dateStr=key+'-'+String(d).padStart(2,'0');
+        let sh='';
+        if(mesData.overrides?.[dateStr]?.[w.id]){
+          sh=mesData.overrides[dateStr][w.id];
+        } else {
+          // Calcular turno según safari para ese mes
+          sh=calcShiftForMonth(w.id,dateStr,y,m);
+        }
+        if(['M','T','N','D','HN','F!','MR','TR'].includes(sh)){trab++;horas+=SH_H[sh]||8;}
+        if(sh==='V') vac++;
+        if(sh==='F!') fest++;
+      }
+      const festRec=(mesData.festivos||[]).filter(f=>f.wid===w.id&&f.status==='recuperado').length;
+      totalTrab+=trab; totalHoras+=horas; totalFest+=fest; totalVac+=vac; totalRec+=festRec;
+      return `<td style="font-size:11px">
+        <div style="font-weight:600">${trab}d</div>
+        <div style="color:var(--text3);font-size:10px">${horas}h${fest>0?` <span style="color:var(--red-t)">F${fest}</span>`:''}${vac>0?` <span style="color:var(--amber-t)">V${vac}</span>`:''}</div>
+      </td>`;
+    });
+
+    html+=`<tr>
+      <td><span class="ra" style="background:${w.color};color:${w.tc}">${w.name.slice(0,2).toUpperCase()}</span>${w.name}</td>
+      ${celdas.join('')}
+      <td style="background:var(--surface2);font-size:11px;font-weight:600">
+        ${totalTrab}d / ${totalHoras}h
+        ${totalFest>0?`<br><span style="color:var(--red-t);font-size:10px">${totalFest} festivos</span>`:''}
+        ${totalVac>0?`<br><span style="color:var(--amber-t);font-size:10px">${totalVac}d vacac.</span>`:''}
+      </td>
+    </tr>`;
+  });
+
+  html+='</tbody></table></div>';
+
+  // Festivos pendientes de recupero
+  const festPendientes=[];
+  mesesConDatos.forEach(key=>{
+    const mesData=HIST[key];
+    if(mesData&&mesData.festivos){
+      mesData.festivos.filter(f=>f.status==='pendiente').forEach(f=>{
+        festPendientes.push({...f, mes:key});
+      });
+    }
+  });
+
+  if(festPendientes.length>0){
+    html+=`<div style="margin-top:20px;font-size:13px;font-weight:600;margin-bottom:10px">
+      Festivos pendientes de recupero
+    </div>
+    <table class="fes-table">
+      <thead><tr><th>Trabajador</th><th>Mes</th><th>Fecha festivo</th><th>Estado</th></tr></thead>
+      <tbody>
+        ${festPendientes.map(f=>`<tr>
+          <td style="font-weight:500">${f.name}</td>
+          <td>${f.mes}</td>
+          <td style="font-family:'DM Mono',monospace">${f.fecha}</td>
+          <td><span class="tag-pend">Pendiente</span></td>
+        </tr>`).join('')}
+      </tbody>
+    </table>`;
+  }
+
+  document.getElementById('hist-body').innerHTML=html;
+}
+
+// Calcular turno para histórico sin afectar caches
+function calcShiftForMonth(wid,dateStr,year,month){
+  const w=ALL.find(x=>x.id===wid); if(!w) return '';
+  const m=month;
+  if(w.ett) return '';
+  if(wid==='david'){const dow=new Date(dateStr+'T12:00:00').getDay();return dow===0?'F':dow===6?'M':'HN';}
+  if(wid==='dafne'){const dow=new Date(dateStr+'T12:00:00').getDay();return(dow>=1&&dow<=5)?'M':'F';}
+  if(w.safari){
+    if(w.months&&!(m>=w.months[0]&&m<=w.months[1]))return 'F';
+    const d=doy(dateStr);
+    const pos=((d+w.offset)%clen(w.safari)+clen(w.safari))%clen(w.safari);
+    if(!isWork(w.safari,pos))return 'F';
+    if(wid==='celia')return 'T';
+    if(wid==='chus'||wid==='florin')return 'N';
+    return 'M';
+  }
+  if(w.workDays){
+    const total=w.workDays+w.restDays;
+    const pos=((doy(dateStr)+(w.offset||0))%total+total)%total;
+    return pos<w.workDays?'M':'F';
+  }
+  return '';
+}
+
+
+function importPMS(input){
+  const file=input.files[0]; if(!file) return;
+  const reader=new FileReader();
+  reader.onload=function(e){
+    const text=e.target.result;
+    const lines=text.split('\n').filter(l=>l.trim());
+    const data=[];
+    const sep=lines[0].includes(';')?';':',';
+    const headers=lines[0].split(sep).map(h=>h.trim().toLowerCase());
+    for(let i=1;i<lines.length;i++){
+      const cols=lines[i].split(sep);
+      if(cols.length<3) continue;
+      const row={};
+      headers.forEach((h,j)=>{ row[h]=cols[j]?.trim().replace(/['"]/g,''); });
+      const fecha=row['fecha']||row['date']||row[headers[0]];
+      if(!fecha||!/\d{4}-\d{2}-\d{2}/.test(fecha)) continue;
+      data.push({
+        d:fecha,
+        ocu:parseInt(row['hab_ocupadas']||row['reservada']||row['ocupadas']||0),
+        pct:parseInt(row['ocupacion_pct']||row['% occ']||row['occ']||0),
+        sal:parseInt(row['salidas']||row['salida']||0),
+        lle:parseInt(row['entradas']||row['llegadas']||row['llegada']||0),
+        des:parseInt(row['desayunos']||row['desay']||0),
+      });
+    }
+    if(data.length>0){
+      PMS=data;
+      S.pmsData=data;
+      // Detectar mes del CSV
+      const firstDate=data[0].d;
+      const y=parseInt(firstDate.slice(0,4));
+      const m=parseInt(firstDate.slice(5,7));
+      if(y!==S.year||m!==S.month){
+        if(confirm('El CSV es de '+['Enero','Febrero','Marzo','Abril','Mayo','Junio','Julio','Agosto','Septiembre','Octubre','Noviembre','Diciembre'][m-1]+' '+y+'. ¿Cambiar a ese mes?')){
+          S.year=y; S.month=m;
+          updateMonthUI();
+        }
+      }
+      save(); refresh();
+      document.getElementById('pms-status').textContent=data.length+' días cargados · '+firstDate.slice(0,7);
+      alert('PMS cargado: '+data.length+' días de '+firstDate.slice(0,7));
+    } else {
+      alert('No se pudieron leer datos del archivo. Comprueba el formato.');
+    }
+  };
+  reader.readAsText(file,'UTF-8');
+  input.value='';
+}
+
+function changeMonth(dir){
+  let m=S.month+dir, y=S.year;
+  if(m>12){m=1;y++;}
+  if(m<1){m=12;y--;}
+  switchMonth(y,m);
+}
+
+function refresh(){
+  if(S.view==='carga')renderCarga();
+  else if(S.view==='cal')renderCal();
+  else if(S.view==='daily')renderDaily();
+  else if(S.view==='resumen')renderResumen();
+  else if(S.view==='festivos')renderFestivos();
+}
+
+function sv(view){
+  S.view=view;
+  ['carga','cal','daily','resumen','festivos','historico'].forEach(v=>{
+    document.getElementById('v-'+v).style.display=v===view?'block':'none';
+  });
+  document.querySelectorAll('.sb-item').forEach((el,i)=>{
+    const views=['carga','cal','daily','resumen','festivos','historico'];
+    el.classList.toggle('on',views[i]===view);
+  });
+  const cfg=VIEW_CFG[view];
+  if(cfg){
+    document.getElementById('tb-title').textContent=cfg.title.replace('Mayo 2026',['Enero','Febrero','Marzo','Abril','Mayo','Junio','Julio','Agosto','Septiembre','Octubre','Noviembre','Diciembre'][S.month-1]+' '+S.year);
+    document.getElementById('tb-badge').textContent=cfg.badge;
+    const b=document.getElementById('tb-btn');
+    b.textContent=cfg.btn; b.style.display=cfg.btn?'':'none';
+    b.onclick=new Function(cfg.btnFn);
+  }
+  if(view==='carga')renderCarga();
+  else if(view==='cal')renderCal();
+  else if(view==='daily'){
+    const today=new Date();
+    const defDate=S.year===today.getFullYear()&&S.month===today.getMonth()+1
+      ? today.toISOString().slice(0,10)
+      : getMonthStr()+'-01';
+    document.getElementById('daily-dt').value=defDate;
+    renderDaily();
+  }
+  else if(view==='resumen')renderResumen();
+  else if(view==='festivos')renderFestivos();
+  else if(view==='historico')renderHistorico();
+}
+
+
+function exportPDF(){
+  // Preparar vistas para impresión
+  const views=['carga','cal','daily','festivos','resumen'];
+  views.forEach(v=>{
+    const el=document.getElementById('v-'+v);
+    if(el) el.style.display=['carga','cal','resumen'].includes(v)?'block':'none';
+  });
+
+  // Renderizar las tres secciones
+  renderCarga();
+  renderCal();
+  renderResumen();
+
+  // Añadir títulos de sección para el PDF
+  ['v-carga','v-cal','v-resumen'].forEach((id,i)=>{
+    const el=document.getElementById(id);
+    if(!el) return;
+    el.classList.add('print-section');
+    // Quitar título previo si existe
+    const old=el.querySelector('.print-title');
+    if(old) old.remove();
+    const titles=['Carga operativa · Mayo 2026','Calendario de turnos · Mayo 2026','Resumen mensual · Mayo 2026'];
+    const div=document.createElement('div');
+    div.className='print-title';
+    div.textContent=titles[i];
+    el.insertBefore(div,el.firstChild);
+  });
+
+  setTimeout(()=>{
+    window.print();
+    // Restaurar vista original después de imprimir
+    setTimeout(()=>{
+      ['carga','cal','daily','festivos','resumen'].forEach(v=>{
+        const el=document.getElementById('v-'+v);
+        if(el) el.style.display=v===S.view?'block':'none';
+      });
+      // Limpiar títulos de impresión
+      document.querySelectorAll('.print-section').forEach(el=>{
+        el.classList.remove('print-section');
+      });
+      document.querySelectorAll('.print-title').forEach(el=>el.remove());
+    },500);
+  },300);
+}
+
+
+function openDesayunoEdit(date){
+  const p=PMS.find(x=>x.d===date);
+  if(!p||!p.des){ alert('No hay desayunos registrados este día.'); return; }
+  const plan=calcPlanDia(date);
+  const current=plan.desAsig||'auto';
+  const dt=new Date(date+'T12:00:00');
+  const dow=['LU','MA','MI','JU','VI','SA','DO'][dt.getDay()===0?6:dt.getDay()-1];
+
+  // Candidatos: personas que trabajan ese día
+  const ALL_W=[...WL,...WR,...WM];
+  const candidates=ALL_W.filter(w=>{
+    const sh=w.ett?getShiftETT(w.id,date):getShift(w.id,date);
+    return ['M','T','HN','F!','MR','TR'].includes(sh);
+  });
+
+  const opts=`<option value="auto"${current==='auto'?'selected':''}>Automático (${plan.desAsig||'ninguno'})</option>`+
+    candidates.map(w=>`<option value="${w.id}"${current===w.id?' selected':''}>${w.name}</option>`).join('');
+
+  modal('¿Quién hace el desayuno?',
+    `${date} · ${dow} · ${p.des} desayunos`,
+    `<div class="fg"><label>Persona asignada</label><select id="des-sel">${opts}</select></div>
+     <div style="font-size:11px;color:var(--text3);margin-top:-6px">Automático sigue la regla: Rossina → Mercedes → Francesca (>20 sal)</div>`,
+    `saveDesayuno('${date}')`);
+}
+
+function saveDesayuno(date){
+  const val=document.getElementById('des-sel').value;
+  if(val==='auto'){
+    delete S.desOverrides[date];
   } else {
-    carpeta.createFile(CONFIG.ARCHIVO_LOG, JSON.stringify([entry], null, 2), 'application/json');
+    S.desOverrides[date]=val;
   }
+  clearHabCache(date);
+  save(); closeM(); refresh();
 }
 
-function obtenerOCrearLabel(nombre) {
-  for (const l of GmailApp.getUserLabels()) if (l.getName()===nombre) return l;
-  return GmailApp.createLabel(nombre);
-}
-
-function obtenerOCrearCarpeta(nombre) {
-  const iter = DriveApp.getFoldersByName(nombre);
-  if (iter.hasNext()) return iter.next();
-  return DriveApp.createFolder(nombre);
-}
-
-// ═══════════════════════════════════════════════════════════════════
-// REPROCESAR — quita el label y vuelve a procesar todos los emails
-// ═══════════════════════════════════════════════════════════════════
-function reprocesarTodos() {
-  const label   = obtenerOCrearLabel(CONFIG.LABEL_OK);
-  const carpeta = obtenerOCrearCarpeta(CONFIG.CARPETA_DRIVE);
-  const threads = GmailApp.search(`from:${CONFIG.REMITENTE} label:${CONFIG.LABEL_OK}`);
-  console.log(`Reprocesando ${threads.length} emails...`);
-
-  for (const thread of threads) {
-    thread.removeLabel(label);
-  }
-  procesarEmailsPMS();
-}
-
-function obtenerURLPublica() {
-  const carpeta  = obtenerOCrearCarpeta(CONFIG.CARPETA_DRIVE);
-  const iter     = carpeta.getFilesByName(CONFIG.ARCHIVO_JSON);
-  if (!iter.hasNext()) { console.log('Archivo no existe aún.'); return; }
-  const archivo  = iter.next();
-  archivo.setSharing(DriveApp.Access.ANYONE_WITH_LINK, DriveApp.Permission.VIEW);
-  const url = `https://drive.google.com/uc?export=download&id=${archivo.getId()}`;
-  console.log('URL para la app:', url);
-  return url;
-}
-
-function probarConexion() {
-  console.log('=== TEST ===');
-  const threads = GmailApp.search(`from:${CONFIG.REMITENTE}`);
-  console.log(`Emails de Septeo: ${threads.length}`);
-  const carpeta = obtenerOCrearCarpeta(CONFIG.CARPETA_DRIVE);
-  console.log(`Carpeta Drive: ${carpeta.getName()}`);
-  const iter = carpeta.getFilesByName(CONFIG.ARCHIVO_JSON);
-  if (iter.hasNext()) {
-    const f = iter.next();
-    const data = JSON.parse(f.getBlob().getDataAsString());
-    const meses = Object.keys(data);
-    console.log(`Meses en Drive: ${meses.join(', ')}`);
-    meses.forEach(m => console.log(`  ${m}: ${data[m].length} días, muestra: ${JSON.stringify(data[m][0])}`));
-    console.log(`URL: https://drive.google.com/uc?export=download&id=${f.getId()}`);
-  } else {
-    console.log('Sin datos en Drive aún.');
-  }
-  console.log('=== FIN TEST ===');
-}
-
-// ═══════════════════════════════════════════════════════════════════
-// ENDPOINT WEB — permite que la app lea los datos via fetch
-// Desplegar como "Aplicación web" en Apps Script
-// ═══════════════════════════════════════════════════════════════════
-function doGet(e) {
-  const carpeta = obtenerOCrearCarpeta(CONFIG.CARPETA_DRIVE);
-  const iter    = carpeta.getFilesByName(CONFIG.ARCHIVO_JSON);
-  
-  let datos = {};
-  if (iter.hasNext()) {
-    try { datos = JSON.parse(iter.next().getBlob().getDataAsString()); } catch(e) {}
-  }
-  
-  return ContentService
-    .createTextOutput(JSON.stringify(datos))
-    .setMimeType(ContentService.MimeType.JSON);
-}
+// Arranque
+loadAll();
+updateMonthUI();
+renderCarga();
+// Cargar datos frescos de Drive en segundo plano
+setTimeout(cargarDesdeDrive, 1500);
+</script>
+</body>
+</html>
