@@ -130,6 +130,7 @@ body {
 .bV  { background: var(--amber-bg);  color: var(--amber-t); }
 .bR  { background: var(--pink-bg);   color: var(--pink-t); }
 .bFx { background: var(--red-bg);    color: var(--red-t); }
+.bMF { background: var(--red-bg);    color: var(--red-t); }  /* festivo trabajado */
 .bHN { background: var(--green-bg);  color: var(--green-t); }
 .bETT{ background: var(--amber-bg);  color: var(--amber-t); }
 
@@ -574,6 +575,14 @@ function updateMonthUI(){
 
 // ── SAFARI ───────────────────────────────────────────────────────────────────
 const JAN1=new Date(2026,0,1);
+const TURNOS_TRABAJO=['M','T','N','HN','MR','TR'];
+function esFestivoTrabajado(sh,date){ return FESTIVOS.includes(date)&&TURNOS_TRABAJO.includes(sh); }
+function turnoLabel(sh,date){
+  if(!esFestivoTrabajado(sh,date)) return sh;
+  // Turno + F! — mostrar el turno real con marca de festivo
+  const map={M:'M+F!',T:'T+F!',N:'N+F!',HN:'HN+F!',MR:'M+F!',TR:'T+F!'};
+  return map[sh]||sh+'+F!';
+}
 function getDaysInMonth(){ return new Date(S.year,S.month,0).getDate(); }
 function getMonthStr(){ return S.year+'-'+String(S.month).padStart(2,'0'); }
 function makeDateKey(d){ return getMonthStr()+'-'+String(d).padStart(2,'0'); }
@@ -592,7 +601,6 @@ function getShiftRaw(wid,date){
     if(w.months&&!(m>=w.months[0]&&m<=w.months[1]))return 'F';
     const pos=((doy(date)+w.offset)%clen(w.safari)+clen(w.safari))%clen(w.safari);
     if(!isWork(w.safari,pos))return 'F';
-    if(FESTIVOS.includes(date))return 'F!';
     if(wid==='celia')return 'T';
     if(wid==='chus'||wid==='florin')return 'N';
     return 'M';
@@ -800,9 +808,7 @@ function getShiftETT(ettId,date){
     }
     const h=calcPlanDia(date);const hab=h.asig?.['ingrid'];
     // Solo va a mañana si tiene habitaciones asignadas POR SOBRANTE
-    // (cuando las fijas no llegan y necesita cubrir más salidas)
     if(typeof hab==='number'&&hab>0&&h.sobrante>0) return 'M';
-    // En cualquier otro caso: tarde (zonas comunes o limpiezas solicitadas)
     return 'T';
   }
 
@@ -831,6 +837,23 @@ function getShiftETT(ettId,date){
 }
 
 // ── RENDER CARGA ─────────────────────────────────────────────────────────────
+function autoRegistrarFestivos(){
+  // Registrar automáticamente festivos trabajados por todos los trabajadores
+  const ALL_W=[...WL,...WR,...WN,...WM];
+  FESTIVOS.forEach(fecha=>{
+    // Solo festivos del mes/año activo
+    if(!fecha.startsWith(getMonthStr())) return;
+    ALL_W.forEach(w=>{
+      const sh=w.ett?getShiftETT(w.id,fecha):getShift(w.id,fecha);
+      if(TURNOS_TRABAJO.includes(sh)){
+        if(!S.festivos.find(f=>f.wid===w.id&&f.fecha===fecha)){
+          S.festivos.push({id:Date.now()+Math.random(),wid:w.id,name:w.name,fecha,recDate:'',status:'pendiente'});
+        }
+      }
+    });
+  });
+}
+
 function renderCarga(){
   const diasAlert=PMS.filter(p=>calcCarga(p).gap<-7).length;
   const diasWarn =PMS.filter(p=>{const g=calcCarga(p).gap;return g<0&&g>=-7;}).length;
@@ -864,9 +887,11 @@ function renderCarga(){
       const plan=calcPlanDia(p.d);
       const sh=getShift(wid,p.d);
       const isD=plan.desAsig===wid;
-      if(!['M','F!','HN'].includes(sh))return `<span style="color:var(--text3)">—</span>`;
-      const lbl=isD?(sh==='F!'?'F!+☕':'M+☕'):(sh==='F!'?'F!':'M');
-      const cls=isD?'bD':sh==='F!'?'bFx':'bM';
+      const isFest=esFestivoTrabajado(sh,p.d);
+      if(!TURNOS_TRABAJO.includes(sh))return `<span style="color:var(--text3)">—</span>`;
+      const turnoBase=isD?'☕':(sh==='HN'?'HN':sh==='T'?'T':sh==='N'?'N':'M');
+      const lbl=isFest?turnoBase+'+F!':isD?turnoBase:turnoBase;
+      const cls=isFest?'bFx':isD?'bD':sh==='T'?'bT':sh==='N'?'bN':'bM';
       return `<span class="badge ${cls}">${lbl}</span>`;
     }
 
@@ -999,8 +1024,12 @@ function renderCal(){
         const isWE=dow===0||dow===6;
         const isFest=FESTIVOS.includes(key);
         let sh=w.ett?getShiftETT(w.id,key):getShift(w.id,key);
-        const cls=SHIFT_CLS[sh]||'bF';
-        const lbl=SHIFT_LBL[sh]||'·';
+        const esFest=esFestivoTrabajado(sh,key);
+        // Color: rojo si festivo trabajado, normal si no
+        const cls=esFest?'bFx':(SHIFT_CLS[sh]||'bF');
+        // Texto: mostrar turno real + F! si festivo
+        const rawLbl=SHIFT_LBL[sh]||'·';
+        const lbl=esFest&&rawLbl!=='·'?(rawLbl+'+F!'):rawLbl;
         const bg=isFest?'rgba(226,75,74,0.07)':isWE?'rgba(163,45,45,0.03)':'';
 
         // Info extra limpieza
@@ -1726,6 +1755,7 @@ function saveDesayuno(date){
 // Arranque
 loadAll();
 updateMonthUI();
+autoRegistrarFestivos();
 renderCarga();
 // Cargar datos frescos de Drive en segundo plano
 setTimeout(cargarDesdeDrive, 1500);
