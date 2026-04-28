@@ -443,10 +443,11 @@ const WL=[
   {id:'mercedes', name:'Mercedes', color:'#D5C8F5',tc:'#2E1A7A', safari:[7,2,7,5],offset:20,breakfast:true,cap:7,capD:3},
   {id:'ingrid',   name:'Ingrid',   color:'#FAD89A',tc:'#5A3200', ett:true,cap:7, safari:[7,2,6,6],offset:6},
   {id:'karen',    name:'Karen',    color:'#F5C0D5',tc:'#6A1030', ett:true,cap:7, safari:[6,2],offset:0},
+  {id:'laura',    name:'Laura',    color:'#C8D8F5',tc:'#1A3A6E', ett:true,cap:7, manual:true},
 ];
 const WR=[
   {id:'dafne',    name:'Dafne',    color:'#C8ECD9',tc:'#0D4A2A'},
-  {id:'melisa',   name:'Melissa',  color:'#BDD5F2',tc:'#0C3A6E', safari:[6,4,6,2],offset:17},
+  {id:'melisa',   name:'Melissa',  color:'#BDD5F2',tc:'#0C3A6E', safari:[6,4,6,2],offset:16},
   {id:'celia',    name:'Celia',    color:'#D5C8F5',tc:'#2E1A7A', safari:[6,4,6,2],offset:3},
   {id:'veronica', name:'Verónica', color:'#FAD89A',tc:'#5A3200', safari:[6,4,6,2],offset:10},
   {id:'francesca',name:'Francesca',color:'#F5C0D5',tc:'#6A1030', workDays:5,restDays:2,offset:1},
@@ -519,12 +520,38 @@ function cargarDesdeDrive(){
     });
 }
 
+// Planning real mayo 2026 — referencia
+const MAYO_REAL_OVERRIDES={"2026-05-01": {"dafne": "F", "francesca": "R", "melisa": "M", "celia": "F", "veronica": "T", "david": "F", "chus": "F", "florin": "N", "mercedes": "M", "antonia": "F", "rossina": "M", "laura": "F", "ingrid": "F", "karen": "T"}, "2026-05-02": {"dafne": "F", "francesca": "M", "melisa": "M", "celia": "F", "veronica": "T", "david": "M", "chus": "F", "florin": "N", "mercedes": "M", "antonia": "F", "rossina": "M", "laura": "F", "ingrid": "T", "karen": "M"}, "2026-05-03": {"dafne": "F", "francesca": "D", "melisa": "M", "celia": "T", "veronica": "F", "david": "F", "chus": "F", "florin": "N", "mercedes": "F", "antonia": "M", "rossina": "M", "laura": "F", "ingrid": "T", "karen": "M"}, "2026-05-04": {"dafne": "R", "francesca": "T", "melisa": "M", "celia": "T", "veronica": "F", "david": "R", "chus": "N", "florin": "F", "mercedes": "F", "antonia": "M", "rossina": "M", "laura": "F", "ingrid": "T", "karen": "F"}, "2026-05-05": {"dafne": "R", "francesca": "T", "melisa": "M", "celia": "T", "veronica": "F", "david": "R", "chus": "N", "florin": "F", "mercedes": "F", "antonia": "M", "rossina": "M", "laura": "M", "ingrid": "T", "karen": "F"}, "2026-05-06": {"dafne": "R", "francesca": "T", "melisa": "M", "celia": "T", "veronica": "R", "david": "R", "chus": "N", "florin": "F", "mercedes": "F", "antonia": "M", "rossina": "M", "laura": "M", "ingrid": "T", "karen": "F"}, "2026-05-07": {"dafne": "R", "francesca": "T", "melisa": "F", "celia": "T", "veronica": "M", "david": "R", "chus": "N", "florin": "F", "mercedes": "R", "antonia": "M", "rossina": "M", "laura": "F", "ingrid": "T", "karen": "M"}, "2026-05-08": {"dafne": "R", "francesca": "F", "melisa": "F", "celia": "T", "veronica": "M", "david": "R", "chus": "N", "florin": "F", "mercedes": "M", "antonia": "M", "rossina": "F", "laura": "M", "ingrid": "F", "karen": "T"}, "2026-05-09": {"dafne": "F", "francesca": "F", "melisa": "M", "celia": "F", "veronica": "T", "david": "M", "chus": "N", "florin": "F", "mercedes": "M", "antonia": "M", "rossina": "F", "laura": "M", "ingrid": "F", "karen": "T"}, "2026-05-10": {"dafne": "F", "francesca": "M", "melisa": "M", "celia": "F", "veronica": "T", "david": "F", "chus": "N", "florin": "F", "mercedes": "M", "antonia": "F", "rossina": "M", "laura": "M", "ingrid": "T", "karen": "F"}, "2026-05-11": {"dafne": "R", "francesca": "T", "melisa": "M", "celia": "F", "veronica": "T", "david": "R", "chus": "F", "florin": "N", "mercedes": "M", "antonia": "F", "rossina": "M", "laura": "M", "ingrid": "T", "karen": "F"}, "2026-05-12": {"dafne": "R", "francesca": "T", "melisa": "M", "celia": "R", "veronica": "T", "david": "R", "chus": "F", "florin": "N", "mercedes": "M", "antonia": "F", "rossina": "M", "laura": "F", "ingrid": "T", "karen": "F"}, "2026-05-13": {"dafne": "R", "francesca": "T", "melisa": "M", "celia": "T", "veronica": "F", "david": "R", "chus": "F", "florin": "N", "mercedes": "M", "antonia": "F", "rossina": "M", "laura": "M", "ingrid": "T", "karen": "F"}, "2026-05-14": {"dafne": "R", "francesca": "T", "melisa": "M", "celia": "T", "veronica": "F", "david": "R", "chus": "F", "florin": "N", "mercedes": "M", "antonia": "R", "rossina": "M", "laura": "F", "ingrid": "T", "karen": "F"}, "2026-05-15": {"dafne": "R", "francesca": "T", "melisa": "F", "celia": "T", "veronica": "M", "david": "R", "chus": "F", "florin": "N", "mercedes": "F", "antonia": "M", "rossina": "M", "laura": "F", "ingrid": "T", "karen": "M"}, "2026-05-16": {"dafne": "F", "francesca": "F", "melisa": "F", "celia": "T", "veronica": "M", "david": "M", "chus": "F", "florin": "N", "mercedes": "F", "antonia": "M", "rossina": "M", "laura": "F", "ingrid": "F", "karen": "T"}, "2026-05-17": {"dafne": "F", "francesca": "F", "melisa": "F", "celia": "T", "veronica": "M", "david": "F", "chus": "F", "florin": "N", "mercedes": "M", "antonia": "M", "rossina": "F", "laura": "M", "ingrid": "F", "karen": "T"}, "2026-05-18": {"dafne": "R", "francesca": "F", "melisa": "R", "celia": "T", "veronica": "M", "david": "R", "chus": "N", "florin": "F", "mercedes": "M", "antonia": "M", "rossina": "F", "laura": "M", "ingrid": "F", "karen": "T"}, "2026-05-19": {"dafne": "R", "francesca": "F", "melisa": "M", "celia": "F", "veronica": "T", "david": "R", "chus": "N", "florin": "F", "mercedes": "M", "antonia": "M", "rossina": "F", "laura": "M", "ingrid": "F", "karen": "T"}, "2026-05-20": {"dafne": "R", "francesca": "T", "melisa": "M", "celia": "F", "veronica": "T", "david": "R", "chus": "N", "florin": "F", "mercedes": "M", "antonia": "M", "rossina": "F", "laura": "M", "ingrid": "F", "karen": "T"}, "2026-05-21": {"dafne": "R", "francesca": "T", "melisa": "M", "celia": "T", "veronica": "F", "david": "R", "chus": "N", "florin": "F", "mercedes": "M", "antonia": "M", "rossina": "R", "laura": "M", "ingrid": "F", "karen": "T"}, "2026-05-22": {"dafne": "R", "francesca": "T", "melisa": "M", "celia": "T", "veronica": "F", "david": "R", "chus": "N", "florin": "F", "mercedes": "M", "antonia": "F", "rossina": "M", "laura": "F", "ingrid": "T", "karen": "F"}, "2026-05-23": {"dafne": "F", "francesca": "F", "melisa": "M", "celia": "T", "veronica": "F", "david": "M", "chus": "N", "florin": "F", "mercedes": "M", "antonia": "F", "rossina": "M", "laura": "M", "ingrid": "T", "karen": "F"}, "2026-05-24": {"dafne": "F", "francesca": "D", "melisa": "M", "celia": "T", "veronica": "F", "david": "F", "chus": "N", "florin": "F", "mercedes": "F", "antonia": "M", "rossina": "P", "laura": "M", "ingrid": "T", "karen": "M"}, "2026-05-25": {"dafne": "F", "francesca": "M", "melisa": "F", "celia": "T", "veronica": "M", "david": "F", "chus": "F", "florin": "N", "mercedes": "F", "antonia": "M", "rossina": "M", "laura": "T", "ingrid": "F", "karen": "M"}, "2026-05-26": {"dafne": "R", "francesca": "F", "melisa": "F", "celia": "T", "veronica": "M", "david": "R", "chus": "F", "florin": "N", "mercedes": "F", "antonia": "M", "rossina": "M", "laura": "F", "ingrid": "F", "karen": "T"}, "2026-05-27": {"dafne": "R", "francesca": "F", "melisa": "M", "celia": "F", "veronica": "T", "david": "R", "chus": "F", "florin": "N", "mercedes": "F", "antonia": "M", "rossina": "M", "laura": "F", "ingrid": "F", "karen": "T"}, "2026-05-28": {"dafne": "R", "francesca": "T", "melisa": "M", "celia": "F", "veronica": "T", "david": "R", "chus": "F", "florin": "N", "mercedes": "R", "antonia": "M", "rossina": "M", "laura": "F", "ingrid": "T", "karen": "F"}, "2026-05-29": {"dafne": "R", "francesca": "T", "melisa": "M", "celia": "F", "veronica": "T", "david": "R", "chus": "F", "florin": "N", "mercedes": "M", "antonia": "M", "rossina": "F", "laura": "M", "ingrid": "T", "karen": "F"}, "2026-05-30": {"dafne": "F", "francesca": "F", "melisa": "M", "celia": "F", "veronica": "T", "david": "M", "chus": "F", "florin": "N", "mercedes": "M", "antonia": "M", "rossina": "F", "laura": "M", "ingrid": "T", "karen": "M"}, "2026-05-31": {"dafne": "F", "francesca": "M", "melisa": "M", "celia": "T", "veronica": "F", "david": "F", "chus": "F", "florin": "N", "mercedes": "M", "antonia": "F", "rossina": "M", "laura": "M", "ingrid": "T", "karen": "M"}};
+const MAYO_REAL_DES={"2026-05-01": "francesca", "2026-05-02": "rossina", "2026-05-03": "francesca", "2026-05-04": "rossina", "2026-05-05": "rossina", "2026-05-06": "rossina", "2026-05-07": "rossina", "2026-05-08": "mercedes", "2026-05-09": "mercedes", "2026-05-10": "rossina", "2026-05-11": "rossina", "2026-05-12": "rossina", "2026-05-13": "rossina", "2026-05-14": "rossina", "2026-05-15": "rossina", "2026-05-16": "rossina", "2026-05-17": "mercedes", "2026-05-18": "mercedes", "2026-05-19": "mercedes", "2026-05-20": "mercedes", "2026-05-21": "mercedes", "2026-05-22": "rossina", "2026-05-23": "rossina", "2026-05-24": "francesca", "2026-05-25": "rossina", "2026-05-26": "rossina", "2026-05-27": "rossina", "2026-05-28": "rossina", "2026-05-29": "mercedes", "2026-05-30": "mercedes", "2026-05-31": "rossina"};
+
 function loadAll(){
   try{
     const h=localStorage.getItem('hpl_hist_v1');
     if(h) HIST=JSON.parse(h);
   }catch(e){}
-  // Cargar mes activo (por defecto mayo 2026)
+
+  // Mayo 2026: siempre usar el planning real como base
+  // Los overrides manuales del usuario se combinan encima
+  const keyMayo='2026-05';
+  if(!HIST[keyMayo]) HIST[keyMayo]={};
+  // Mezclar: planning real base + overrides manuales del usuario encima
+  const userOverrides=HIST[keyMayo].userOverrides||{};
+  const userDes=HIST[keyMayo].userDesOverrides||{};
+  // Base = planning real, manual = lo que el usuario haya cambiado
+  const mergedOverrides={};
+  // Copiar planning real día a día
+  Object.entries(MAYO_REAL_OVERRIDES).forEach(([date,shifts])=>{
+    mergedOverrides[date]=Object.assign({},shifts);
+  });
+  // Aplicar overrides manuales encima
+  Object.entries(userOverrides).forEach(([date,shifts])=>{
+    if(!mergedOverrides[date]) mergedOverrides[date]={};
+    Object.assign(mergedOverrides[date],shifts);
+  });
+  HIST[keyMayo].overrides=mergedOverrides;
+  HIST[keyMayo].desOverrides=Object.assign({},MAYO_REAL_DES,userDes);
+  HIST[keyMayo].year=2026; HIST[keyMayo].month=5;
+
   loadMonth(S.year, S.month);
 }
 
@@ -684,7 +711,7 @@ function calcPlanDia(date){
   //   2. Francesca (si sal >= umbral y Rossina/Mercedes no disponibles)
   //   3. David (solo si Francesca también tiene fiesta)
   // Desayuno: Rossina si trabaja → Mercedes si no → Francesca si sal>20
-  // Desayuno: override manual primero, luego lógica automática
+  // Desayuno: Rossina → Mercedes → Francesca (siempre, no solo >20 sal)
   let desAsig=S.desOverrides[date]||null;
   if(!desAsig && p.des>0){
     const rosShift=getShift('rossina',date);
@@ -693,8 +720,10 @@ function calcPlanDia(date){
       const merShift=getShift('mercedes',date);
       if(['M','F!','MR'].includes(merShift)) desAsig='mercedes';
     }
-    if(!desAsig && p.sal>20){
-      if(['M','T','F!','MR','TR'].includes(getShift('francesca',date))) desAsig='francesca';
+    // Francesca como tercera opción siempre que esté disponible
+    if(!desAsig){
+      const fraShift=getShift('francesca',date);
+      if(['M','T','D','F!','MR','TR'].includes(fraShift)) desAsig='francesca';
     }
   }
 
@@ -812,21 +841,26 @@ function getShiftETT(ettId,date){
     return 'T';
   }
 
+  if(ettId==='laura'){
+    // Laura: asignación manual — sin turno automático
+    const ov=S.overrides[date]?.['laura'];
+    return ov||'';
+  }
   if(ettId==='karen'){
-    // Karen: ciclo propio [6,2] + complementaria a Ingrid
-    // 1. Verificar si Karen descansa según su ciclo
+    // Karen y Laura: ciclo propio [6,2] + complementarias a Ingrid
+    // 1. Verificar si descansa según su ciclo
     if(w&&w.safari){
       const doy_val=doy(date);const cl=clen(w.safari);
       const pos=((doy_val+w.offset)%cl+cl)%cl;
       if(!isWork(w.safari,pos)) return 'F';
     }
-    // 2. Si Karen trabaja: ver qué hace Ingrid
+    // 2. Si trabaja: ver qué hace Ingrid
     const ingridShift=getShiftETT('ingrid',date);
     if(ingridShift==='F'){
-      // Ingrid descansa → Karen cubre la tarde
+      // Ingrid descansa → cubre la tarde
       return 'T';
     } else {
-      // Ingrid trabaja → Karen mañana si hay carga asignada
+      // Ingrid trabaja → mañana si hay carga asignada
       const h=calcPlanDia(date);const hab=h.asig?.['karen'];
       if(typeof hab==='number'&&hab>0) return 'M';
       return 'F';
@@ -928,8 +962,8 @@ function renderCarga(){
 
 // ── RENDER CALENDARIO ─────────────────────────────────────────────────────────
 function renderCal(){
-  const SHIFT_CLS={M:'bM',T:'bT',N:'bN',D:'bD',F:'bF',V:'bV',R:'bR','F!':'bFx',HN:'bHN',MR:'bR',TR:'bR','':''};
-  const SHIFT_LBL={M:'M',T:'T',N:'N',D:'D',F:'F',V:'V',R:'R','F!':'F!',HN:'HN',MR:'M(R)',TR:'T(R)','':'·'};
+  const SHIFT_CLS={M:'bM',T:'bT',N:'bN',D:'bD',F:'bF',V:'bV',R:'bR','F!':'bFx',HN:'bHN',MR:'bR',TR:'bR',P:'bV',B:'bFx','':''};
+  const SHIFT_LBL={M:'M',T:'T',N:'N',D:'D',F:'F',V:'V',R:'R','F!':'F!',HN:'HN',MR:'M(R)',TR:'T(R)',P:'P',B:'B','':'·'};
 
   const leg=document.getElementById('cal-leg');
   const defs=[['bM','Mañana'],['bT','Tarde'],['bN','Noche'],['bD','Desayuno'],['bF','Descanso'],['bFx','Festivo'],['bR','Recupero'],['bV','Vacaciones']];
@@ -1092,7 +1126,7 @@ function renderDaily(){
   const isFest=FESTIVOS.includes(d);
 
   const SHIFT_LBL_FULL={M:'Mañana',T:'Tarde',N:'Noche',D:'Desayuno',F:'Descanso',V:'Vacaciones',R:'Recupero','F!':'Festivo trab.',HN:'Horario normal','':'—'};
-  const SHIFT_CLS={M:'bM',T:'bT',N:'bN',D:'bD',F:'bF',V:'bV',R:'bR','F!':'bFx',HN:'bHN',MR:'bR',TR:'bR','':''};
+  const SHIFT_CLS={M:'bM',T:'bT',N:'bN',D:'bD',F:'bF',V:'bV',R:'bR','F!':'bFx',HN:'bHN',MR:'bR',TR:'bR',P:'bV',B:'bFx','':''};
 
   let html=`<div class="card" style="padding:18px;margin-bottom:14px">
     <div style="font-size:18px;font-weight:600;margin-bottom:6px">
@@ -1228,7 +1262,7 @@ function closeM(){document.getElementById('MOD').innerHTML='';}
 function openEdit(wid,key,name){
   const cur=getShift(wid,key)||'F';
   const isLimpWorker=WL.find(x=>x.id===wid);
-  const opts=Object.entries({M:'Mañana',T:'Tarde',N:'Noche',D:'Desayuno',F:'Descanso',V:'Vacaciones',R:'Recupero',MR:'Mañana con recupero M(R)',TR:'Tarde con recupero T(R)','F!':'Festivo trabajado'})
+  const opts=Object.entries({M:'Mañana',T:'Tarde',N:'Noche',D:'Desayuno',F:'Descanso',V:'Vacaciones',R:'Recupero',MR:'Mañana con recupero M(R)',TR:'Tarde con recupero T(R)','F!':'Festivo trabajado',P:'Día personal',B:'Baja'})
     .map(([k,v])=>`<option value="${k}"${k===cur?' selected':''}>${v}</option>`).join('');
 
   // Para camareras de limpieza que trabajan: mostrar desglose editable
@@ -1304,6 +1338,10 @@ function saveEdit(wid,key){
   const sh=document.getElementById('me-sh').value;
   if(!S.overrides[key])S.overrides[key]={};
   S.overrides[key][wid]=sh;
+  // Guardar también en userOverrides para persistir cambios manuales en mayo
+  if(!S.userOverrides) S.userOverrides={};
+  if(!S.userOverrides[key]) S.userOverrides[key]={};
+  S.userOverrides[key][wid]=sh;
 
   // Guardar override de habitaciones si se han tocado
   const salEl=document.getElementById('me-sal');
@@ -1446,6 +1484,10 @@ function saveManual(){
   const sh=document.getElementById('mm-s').value;
   if(!S.overrides[key])S.overrides[key]={};
   S.overrides[key][wid]=sh;
+  // Guardar también en userOverrides para persistir cambios manuales en mayo
+  if(!S.userOverrides) S.userOverrides={};
+  if(!S.userOverrides[key]) S.userOverrides[key]={};
+  S.userOverrides[key][wid]=sh;
   clearRecCache(key);
   clearHabCache(key);
   save();closeM();refresh();
